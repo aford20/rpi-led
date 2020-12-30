@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Individual | Raspberry Pi</title>
+<link rel="stylesheet" type="text/css" href="/style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="scripts/jquery.min.js"></script>
+<script src="scripts/script.js"></script> 
+<script type="text/javascript">
+
+window.onload = function() {loadElements();}
+
+function loadElements() {
+    
+    // Create pixelData array and prefill with zeros
+    pixelData = [];
+    for (var x=0; x < 60 ; x++) {
+        pixelData[x] = "000000";
+    }
+    
+    // Global Vars for Preview strip
+    td = document.getElementById('preview').children;
+    activeIndex = [0];
+    
+    liveData = [0];
+    
+    // Loop through each td to setup preview strip
+    for (var i = 0; i < 60; i++) {
+    
+        td[i].style.backgroundColor = "#000000";
+        
+        // Set up drag properties
+        td[i].ondrop = function() {drop(event);};
+        td[i].ondragover = function() {allowDrop(event);};
+        
+        // Add onclick Event
+        td[i].onclick = function(event) {
+                                    
+            var me = event.currentTarget;
+            
+            // Highlight current pixel
+            me.style.backgroundColor= "#ffff00";
+                
+            // Calculate Index Value
+            for (var i=0; (me=me.previousSibling); i++);
+            
+            // Check for special actions
+            if (event.ctrlKey) { // Ctrl Key
+                //Add value to beginning of activeIndex
+                activeIndex.unshift(i-1);
+                
+            } else if (event.shiftKey) { // Shift Key
+                
+                // Caclulate difference between start and stop
+                var diff = i-1 - activeIndex[0];
+                // Loop over each pixel - abs eliminates negative runs
+                for (var x=0; x < Math.abs(diff) ;x++) {
+                    // Determine direction and add value to beginning of active index
+                    if(Math.abs(diff) == diff) { // work left to right
+                        activeIndex.unshift(activeIndex[0]+1);
+                    } else { // work right to left
+                        activeIndex.unshift(activeIndex[0]-1);
+                    }
+                    // Highlight selected
+                    td[activeIndex[0]].style.backgroundColor = "#ffff00";
+                }
+                
+            } else { // No keys
+                
+                // Loop through active index to find and Un-Highlight last pixels
+                for (var x=0; x < activeIndex.length ;x++) {
+                    td[activeIndex[x]].style.backgroundColor = "#" + xMaster(pixelData[activeIndex[x]],true);
+                }
+                // Clear activeIndex
+                activeIndex = []
+                // Fill with Current Index
+                activeIndex[0] = i-1;
+                
+                setSliders(pixelData[i-1]) // Update RGB Sliders
+            }
+               
+            
+            // Move Selector to current pixel
+            document.getElementById('selector').value = activeIndex[0];
+        }
+    }; 
+            
+    // Add compile function to each slider
+    for (var i = 0; i < slider.length; i++) {
+        slider[i].oninput = function(event) {
+            // Show slider Value
+            event.currentTarget.nextSibling.innerHTML = event.currentTarget.value;
+            // Reset Dissolve Timer
+            clearTimeout(DissolveTimer);
+            // Update Preview and Compiler to convert RGB to Hex
+            // 2 argument delays dissolve function
+            updatePreview(compileColor(), true);
+        }
+    }
+    
+    // On input function for master brightness
+    document.getElementById("master").oninput = function(event) {
+        // Show Value
+        event.currentTarget.nextSibling.innerHTML = event.currentTarget.value;
+        clearTimeout(DissolveTimer);
+        updatePreview(pixelData[activeIndex[0]],true);
+    }
+        
+    // Get Live Configuration
+    returnColor();
+}
+
+// Multiply input color by Master. Requires converting to rgb and back.
+function xMaster(hexPre, bright = false) { 
+    var hexPost = ""
+    for (var x=0; x<3; x++) {
+        // Convert to RGB and Multiply by master
+        var rgb = parseInt(document.getElementById("master").value *0.01* parseInt(hexPre.slice(x*2,x*2+2),16));
+        // Brighten color
+        if (document.getElementById('brighten').checked && bright == true) {
+            if (rgb != 0) {
+                rgb = parseInt(rgb*2/3 +85)
+            }
+        }
+        // convert back to hex
+        var hex = Number(rgb).toString(16);
+        if (hex.length < 2) {
+            hex = "0" + hex;
+        }
+            hexPost += hex;
+        }
+    return hexPost
+};
+
+// Update Preview strip to show changes
+function updatePreview(colorHex,delay) {    
+    setSliders(colorHex) // Update RGB Sliders
+    
+    // Store Color in pixelData
+    for (var i = 0; i < activeIndex.length; i++) {
+        pixelData[activeIndex[i]]=colorHex;
+    }
+    
+    for (var i=0; i< 60; i++) {
+        // Set color of each pixel.
+        td[i].style.backgroundColor = '#' + xMaster(pixelData[i],true)
+    }
+    
+    // Check for Autotake
+    if (document.getElementById('autotake').checked == true) {
+        goLive();
+    }
+    // Check for Autodissolve
+    else if (document.getElementById('autodissolve').checked == true) {
+        // Delay for sliders
+        if (delay == true) {
+            DissolveTimer=setTimeout(goLive, 1000,true);
+        } else {
+            goLive(true);
+        }
+    }// Check for Autowipe
+    else if (document.getElementById('autowipe').checked == true) {
+        // Delay for sliders
+        if (delay == true) {
+            DissolveTimer=setTimeout(goLive, 1000, false, true);
+        } else {
+            goLive(false, true);
+        }
+    }
+}
+
+// Send request to server to show on strip
+function goLive(dis = false, wipe = false) {
+    
+    var colorHex = [];
+
+    // Reorder each pixel into GRB
+    for (var x=0; x < 60 ; x++) {
+        colorHex[x] = xMaster(pixelData[x]);
+    }
+    
+    // Set up Ajax Config
+    config = {
+        'type'        : 'POST',
+        'dataType'    : 'JSON',
+        'contentType' : 'application/json',
+        'data'        : JSON.stringify(colorHex)
+        }   
+    // Modify config
+    if (dis == true ) {
+        config.url = 'staticLive?transition=dissolve';
+        config.success = setTimeout(returnColor, 1000);
+    } else if (wipe == true) {
+        config.url = 'staticLive?transition=wipe';
+        config.success = setTimeout(returnColor, 1000);
+    } else {
+        config.url = 'staticLive?transition=take';
+        config.success = setTimeout(returnColor, 200);
+    }
+    // Send Request
+    jQuery.ajax(config);
+    // stop link reloading the page
+    //event.preventDefault();
+}
+
+// Get live strip colors
+function returnColor() {
+    // ajax request
+    $.get("IAreturn", function(data){
+        
+        // Define Live Strip pixels
+        var live = document.getElementById("live").children;
+        
+        // Loop over each pixel, convert GRB to RGB, update background color
+        for (var x=0; x < 60 ; x++) {
+            liveData[x] = data.slice(0+6*x,2+6*x) + data.slice(2+6*x,4+6*x) + data.slice(4+6*x,6+6*x);
+            live[x].style.backgroundColor = "#" + liveData[x];
+        }
+    });
+}
+
+
+// Save position of Pixel Selector
+function selector(event) {       
+    // Loop through active index to find and Un-Highlight last pixels
+    for (var y=0; y < activeIndex.length;y++) {
+        td[activeIndex[y]].style.backgroundColor = "#" + xMaster(pixelData[activeIndex[0]],true);
+    }
+    // Clear activeIndex
+    activeIndex = []
+    // Fill with Current Index
+    activeIndex[0] = parseInt(event.currentTarget.value);
+    
+    // Highlight new pixel
+    td[event.currentTarget.value].style.backgroundColor = "#ffff00";
+    setSliders(pixelData[activeIndex[0]]) // Update RGB Sliders
+}
+
+
+// Start / Stop auto-update
+function autoupdate() {
+    if (document.getElementById('autoupdate').checked == true) {
+        // Set Update Timer
+        updateInterval = setInterval(returnColor, 5000);
+        // Grey out Update Button
+        document.getElementById('update').style.opacity = "0.3";
+    } else {
+        // Clear Timer
+        clearInterval(updateInterval);
+        // Restore color to update button
+        document.getElementById('update').style.opacity = "1";
+    }
+}
+
+function LiveToPreview() {
+    document.getElementById("master").value = 100;
+    
+    for (var i=0; i< 60; i++) {
+        pixelData[i] = liveData[i] // Copy live to Preview
+        td[i].style.backgroundColor = '#' + xMaster(pixelData[i],true) // Set color of each pixel.
+    }
+    
+    // Clear activeIndex
+    activeIndex = []
+    // Fill with Current Index
+    activeIndex[0] = parseInt(document.getElementById('selector').value);
+    
+    // Highlight new pixel
+    td[activeIndex[0]].style.backgroundColor = "#ffff00";
+}
+
+// Shutdown Webserver
+function shutdown() {
+    jQuery.ajax({
+        'type'        : 'GET',
+        'contentType' : 'application/json',
+        'url'         : 'shutdown'
+    });
+	// stop link reloading the page
+    event.preventDefault();
+}
+
+function Brighten() {activeIndex = []; updatePreview("",true);}
+
+// Drag and Drop
+function allowDrop(ev) {
+    ev.preventDefault();
+}
+
+function drag(ev) {
+    // Send Color Code
+    ev.dataTransfer.setData("text", event.currentTarget.getAttribute("hexCode"));
+}
+
+function drop(event) {
+
+    var me = event.currentTarget;
+    
+    // Allow drop to occcur
+    event.preventDefault();
+    
+    // Get Color Code
+    var data = event.dataTransfer.getData("text");
+        
+    // Calculate Index
+    for (var i=0; (me=me.previousSibling); i++);
+    
+    // Set Active Index
+    activeIndex = [];
+    activeIndex[0] = i-1;
+        
+    // Move Selector to current pixel
+    document.getElementById('selector').value = activeIndex[0];
+    
+    // Update Preview
+    updatePreview(data);
+}
+</script>
+<style>
+
+div {
+    display:inline-block;
+}
+
+table {
+    width:100%;
+}
+
+td {
+    height:20px;
+    background:#323232;
+}
+
+.PLHeader {
+    height:30px;
+    text-align:center;font-size:large;vertical-align:middle;font-weight:300;
+}
+
+
+#selector {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 15px;
+    margin:20px 0px;
+    border-radius: 5px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+#selector:hover {
+    opacity: 1;
+}
+
+#selector::-webkit-slider-thumb:hover {
+    width:40px;height:40px;
+}
+
+#selector::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 30px;
+    height: 30px;
+    border-radius:0% 50% 50% 50%;
+    background: #9f9f9f;
+    transform:rotate(45deg);
+    cursor: pointer;
+    -webkit-transition:.2s;
+    transition-duration:.2s;
+}
+
+#selector::-moz-range-thumb {
+    width: 30px;
+    height: 30px;
+    border-radius:0% 50% 50% 50%;
+    background: #9f9f9f;
+    transform:rotate(45deg);
+    cursor: pointer;
+    transition-duration:.2s;
+}
+
+</style>
+</head>
+<body>
+
+<table>
+    <tr><td colspan="60" class="PLHeader">Live</td></tr>
+    <tr id="live">
+        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+    </tr>
+    <tr><td colspan="60" class="PLHeader">Preview</td></tr>
+    <tr id="preview">
+        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td ondrop="drop(event)" ondragover="allowDrop(event)"></td>
+    </tr>
+</table>
+
+<input type="range" min="0" max="59" value="0" id="selector" oninput="selector(event)">
+<br />
+<br />
+
+<!-- Controls -->
+<div id=controlContainer ><!--
+    --><button onclick="goLive()" class=takeControls id="take" style="border-color:#ffaf00;color:#ffaf00">Take</button><!--
+    --><button onclick="goLive(true)" class=takeControls id="dissolve" style="border-color:#00bcce;color:#00bcce">Dissolve</button><!--
+    --><button onclick="goLive(false,true)" class=takeControls id="wipe" style="border-color:#009e00;color:#009e00">Wipe</button><!--
+    --><button onclick="returnColor()" class=takeControls id="update" style="border-color:#cc80cc;color:#cc80cc">Update</button><!--
+--></div>   
+
+<!-- Palette Switch -->
+<ul id="palSwitch">
+	<li>RGB</li><!--
+ --><li>Palette</li><!--
+ --><li id="RP"> RGB + Palette</li><!--
+ --><li>Settings</li>
+<hr />
+</ul>
+
+<!-- RGB Sliders -->
+<div id="slidecontainer">
+  <input type="range" min="0" max="255" value="0" class="slider" style="background:#cf0000"><p>0</p>
+  <input type="range" min="0" max="255" value="0" class="slider" style="background:#00cf00"><p>0</p>
+  <input type="range" min="0" max="255" value="0" class="slider" style="background:#0000cf"><p>0</p>
+</div>
+
+<!-- Quick Buttons -->
+<div id="buttonContainer">
+    <button onclick="updatePreview('000000')" style="border-color:#999;color:#999;" ondrop="drop(event)" ondragover="allowDrop(event)" hexCode = "000000" draggable="true" ondragstart="drag(event)">Off</button>
+    <button onclick="updatePreview('ffffff')" style="border-color:#ffffff;color:#ffffff;" hexCode = "ffffff" draggable="true" ondragstart="drag(event)"> White </button>
+    <button onclick="updatePreview('ff0000')" style="border-color:rgb(255,0,0);color:rgb(255,0,0)" hexCode = "ff0000" draggable="true" ondragstart="drag(event)">Red</button>
+    <button onclick="updatePreview('00ff00')" style="border-color:#00ff00;color:#00ff00" hexCode = "00ff00" draggable="true" ondragstart="drag(event)">Green</button>
+    <button onclick="updatePreview('0000ff')" style="border-color:rgb(55,55,255);color:rgb(55,55,255)" hexCode = "0000ff" draggable="true" ondragstart="drag(event)">Blue</button>
+    <button onclick="updatePreview('ffaf00')" style="border-color:#ffaf00;color:#ffaf00;" hexCode = "ffaf00" draggable="true" ondragstart="drag(event)">Orange</button>
+</div>
+
+
+<!-- Settings Drawer -->
+<div id="settings">
+	<input type="range" min="0" max="100" value="100" id="master"><p>100</p>
+	<div id="chkOptions"> 
+		<span> Auto-take:
+            <input type="checkbox" id="autotake" onclick="autotake()"></span><!--
+        --><span> Auto-dissolve:
+            <input type="checkbox" id="autodissolve" onclick="autodissolve()" checked=true></span><br/><!--
+        --><span> Auto-wipe:
+            <input type="checkbox" id="autowipe" onclick="autowipe()"></span><!--
+        --><span> Refresh Continuously:
+            <input type="checkbox" id="autoupdate" onclick="autoupdate()" ></span><!--
+        --><span> Brighten Preview:
+            <input type="checkbox" id="brighten" onclick="Brighten()" checked=true></span>
+    </div>
+    <button onclick="LiveToPreview()" style="border-color:#a00000;color:#a00000">Live to Preview</button>
+    <a href="Leds.html" ><button style="border-color:#1652a9;color:#1652a9;"> Whole Strip Mode </button></a>
+    <a href="index.html" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>
+</div>
+
+</body>
+</html>

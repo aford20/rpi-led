@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Home | Raspberry Pi</title>
+
+    <link rel="stylesheet" type="text/css" href="/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="favicon.ico?v=2" />
+<script src="scripts/jquery.min.js"></script>
+<script>
+function shutdown() {
+    jQuery.ajax({
+        'type'        : 'POST',
+        'contentType' : 'application/json',
+        'url'         : 'shutdown'
+    });
+	// stop link reloading the page
+    event.preventDefault();
+}
+
+function PiOff() {
+	//var data = "TEST";
+	var data = prompt("Enter password to shutdown Raspberry Pi:");
+
+    jQuery.ajax({
+        'type'        : 'POST',
+        'dataType'    : 'text',
+        'contentType' : 'application/json',
+        'data'        : JSON.stringify(data),
+        'url'         : 'PiOff'
+    })
+    .done(function( data, textStatus, jqXHR ) {
+        alert(data);
+        //if (data == 1) {alert("Password Correct. Raspberry Pi Shutting down.");}
+        //else {alert("Password Incorrect");}
+    })
+    .fail(function(data, textStatus, errorThrown) {
+        alert("Something failed.\n \n ----------  Debug Info  ---------- " + "\nData: " + data+"\nStatus: " +textStatus + "\n Error: " + errorThrown);
+    });
+	// stop link reloading the page
+    event.preventDefault();
+}
+window.onload = function() {
+
+$('#ToggleSync').click( function(e) {
+  console.log(e.currentTarget.checked);
+  if (e.currentTarget.checked) {
+    jQuery.ajax({
+        'type'        : 'get',
+        'contentType' : 'application/json',
+        'url'         : 'isSync?state=True'
+    })
+  } else {
+    jQuery.ajax({
+        'type'        : 'get',
+        'contentType' : 'application/json',
+        'url'         : 'isSync?state=False'
+    })
+  }
+});
+
+}
+</script>
+<style>
+body {margin:0px;background-color:#303030}
+
+#header {
+	width:100%;background-color:#6bb55b;text-align:center;
+	border-bottom:5px #e89700 solid;height:70px;
+}
+
+a {
+	display:block; margin:1%; padding:35px 0px; border-radius: 10px;
+	text-align:center; font-size:28px; font-weight:900; color:#dddddd; text-decoration:none;
+	box-sizing:border-box; border:3px #dddddd solid;
+
+}
+#led a:not(:nth-child(3)) {display:inline-block;}
+
+.hrSec {
+    height:5px;
+    background-color:#6bb55b; border: none; position: relative;
+    top: 60px; width: 80%; margin: 0% 10%;
+}
+
+.sec {
+	text-align:center; font-size:34px; color: #dddddd;
+    position: relative; line-height: 1.7; overflow: hidden;
+}
+.sec span { background-color: #303030; padding: 0 15px;}
+</style>
+</head>
+<body>
+<div id='header'><img src='logos/logo_162.png' height='70px'></div>
+<br />
+<!--<a id='alarms' href='alarms.html'>Alarms</a>-->
+<div id="led">
+	<hr class='hrSec'>
+	<h2 class='sec'><span>LED Control</span></h2>
+	<a href='Leds.html' style='color:#1652a9;border-color:#1652a9'>Whole Strip Mode</a>
+	<a href='IALeds.html' style='border-color:#52a916;color:#52a916;width:48%'>Individual Mode</a><a href='pattern.html' style='border-color:#9216a9;color:#9216a9;width:48%'>Pattern Mode</a>
+  <a style='display:block;border:none;'>Sync <label class="switch" >
+    <input type="checkbox" class='enabled' id='ToggleSync'>
+    <span class="toggle round"></span>
+  </label></a>
+</div>
+<hr class='hrSec' style='top:40px; margin-bottom:40px;'>
+<br /><br />
+<a id='shutdown' onclick="shutdown()" style='border-color:#c60000;color:#c60000;'>Shutdown Server</a>
+<br /><br />
+<a id='PiOff' onclick="PiOff()" style="border-color:#404040;color:#404040">Shutdown Raspberry Pi</a>
+
+</body>
+</html>
