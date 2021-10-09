@@ -228,7 +228,7 @@ class Main(object):
 			elif t == 'allDissolve':
 				for i in range(self.strip.numPixels()):
 					self.strip.setPixelColor(i,pattern[shift])
-				self.strip.show()				
+				self.strip.show()
 
 		if transition == 'take': # Clone pattern for take
 			for i in range(len(pattern)): # Convert to decimal
@@ -237,7 +237,7 @@ class Main(object):
 				pattern += pattern
 		elif transition == 'dissolve' or transition == 'allDissolve': # Compute Pattern for Dissolve
 			pattern.append(pattern[0]) # Add extra stop to fade back to beginning
-			
+
 			if transition == 'dissolve':
 				stoplength = int(self.strip.numPixels()/(len(pattern)-2))
 				interval = interval/25 # Speed up
@@ -258,7 +258,7 @@ class Main(object):
 					ComputedStrip.append((sliceDiff(color1,color2,0,2,x)<<16) + (sliceDiff(color1,color2,2,4,x)<<8) + sliceDiff(color1,color2,4,6,x))
 			pattern = ComputedStrip
 			del ComputedStrip
-			
+
 		if interval != 0:
 			self.animate = RepeatedTimer(interval, Animation, transition)
 		thread = Thread(target = Animation, args = (transition, ))
@@ -350,7 +350,7 @@ class Main(object):
 		try: # Throw error if no job ...
 			job.clear()
 		except: # ... So create one
-			job = cron.new(command = 'sudo python /home/pi/Documents/alarm.py', comment='alarm ID' + str(ID))
+			job = cron.new(command = 'sudo python ' + os.path.abspath(os.path.dirname(__file__)) + '/alarm.py' , comment='alarm ID' + str(ID))
 		finally: # Edit properties
 
 			# Check enabled state
@@ -362,12 +362,12 @@ class Main(object):
 
 			# Change and save path if delay
 			if alarm.split(" ")[5] == "true":
-				path = '/home/pi/Documents/alarmDelay.py'
+				path = os.path.abspath(os.path.dirname(__file__)) + '/alarmDelay.py'
 				# Remove Delay from string
 				alarm = alarm[slice(-5)]
 			# Path if not delay
 			else:
-				path = '/home/pi/Documents/alarm.py'
+				path = os.path.abspath(os.path.dirname(__file__)) + '/alarm.py'
 				# Remove Delay from string
 				alarm = alarm[slice(-6)]
 			job.set_command("sudo python " + path)
@@ -375,7 +375,7 @@ class Main(object):
 			# Check for one-time run
 			if alarm.split(" ")[4] == "*":
 				job.set_comment("alarm ID" + str(ID))
-				job.set_command("sudo python " + path + " && sudo python /home/pi/Documents/DeleteJob.py " + str(ID))
+				job.set_command("sudo python " + path + ' && sudo python ' + os.path.abspath(os.path.dirname(__file__)) + '/DeleteJob.py' + str(ID))
 
 			# Add all other properties
 			job.setall(alarm)
@@ -435,6 +435,6 @@ class Main(object):
 if __name__ == '__main__':
 	cherrypy.tree.mount(Main(60,18,0), '/', config) # Main Thread
 	sleep(1)
-	cherrypy.tree.mount(Main(50,13,1), '/aux1', config) # Secondary
+	#cherrypy.tree.mount(Main(50,13,1), '/aux1', config) # Secondary
 	cherrypy.engine.start()
 	cherrypy.engine.block()
