@@ -260,12 +260,12 @@ class Main(object):
 	# Alarms
 	@cherrypy.expose
 	def getAlarms(self):
-		cron = CronTab(user='root')
+		'''cron = CronTab(user='root')
 		jobs = ""
 		for job in cron.find_comment(re.compile('alarm')):
 			jobs += str(job) + "$"
-		jobs = jobs[slice(0,-1)]
-		return jobs
+		jobs = jobs[slice(0,-1)]'''
+		return '50 6 * * 1,2,3,4,5 sudo python alarm.py$24 15 * * * sudo python alarm.py && sudo python DeleteJob.py$14 7 * * 2 sudo python alarmDelay.py'
 
 	# Remove Alarm
 	@cherrypy.expose
@@ -273,8 +273,7 @@ class Main(object):
 	def RemoveAlarm(self):
 		# Get Data
 		data = cherrypy.request.json
-		print(data)
-
+		'''
 		# Setup Cron
 		cron = CronTab(user='root')
 
@@ -282,7 +281,7 @@ class Main(object):
 		for job in cron.find_comment(re.compile('ID' + str(data))):
 			cron.remove(job)
 		cron.write()
-
+		'''
 		return Main.getAlarms(self)
 
 	# Save Alarm
@@ -291,9 +290,8 @@ class Main(object):
 	def SaveAlarm(self):
 		# Get Data
 		data = cherrypy.request.json
-
 		# Setup Cron
-		cron = CronTab(user='root')
+		'''cron = CronTab(user='root')
 
 		ID = data[slice(0,1)]
 		alarm = data[slice(2,None)]
@@ -335,7 +333,7 @@ class Main(object):
 			job.setall(alarm)
 
 		# Save
-		cron.write()
+		cron.write()'''
 		return Main.getAlarms(self)
 
 	# Shutdown Server Endpoint
@@ -353,7 +351,7 @@ class Main(object):
 		passwd = "kklla"
 
 		if data == passwd:
-			os.system('sudo shutdown')
+			#os.system('sudo shutdown')
 			#os.system('sudo shutdown -c')
 			yield "Raspberry Pi shutting down in about a minute ... "
 			self.shutdown()
