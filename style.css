@@ -25,7 +25,7 @@ body {
 		--accent2: Button Backgrounds, Borders, Days of Week
 		--disabled: Disabled checkboxes */
 
-		/* Default
+		/* Default*/
 		--main:#202020;	--secondary:#ffffff;	--accent1:#e89700;	--accent2:#505050;	--disabled:#c3c3c3;
 
 		/* Winter Candy
@@ -35,8 +35,7 @@ body {
 		--main:#d6ffc6;	--secondary:#005800;	--accent1:#11850f;	--accent2:#668934;	--disabled:#c3c3c3; */
 
 		/* Fall Foliage
-		--main:#601100;	--secondary:#F5E9CD;	--accent1:#e47e00;	--accent2:#b69752;	--disabled:#9c8c67;*/
-		--main:#ffe389;	--secondary:#734b00;	--accent1:#e89700;	--accent2:#dd5c00;	--disabled:#c3c3c3;
+		--main:#ffe389;	--secondary:#734b00;	--accent1:#e89700;	--accent2:#dd5c00;	--disabled:#c3c3c3;*/
 
 	font-family:'Quicksand','Roboto', sans-serif;background-color:var(--main);color:var(--secondary);}
 
