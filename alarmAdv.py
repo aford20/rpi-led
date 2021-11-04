@@ -1,10 +1,12 @@
 # This script is called by crontab at a certain time to function as an alarm clock.
-# Random Leds slowly light up increasing brightness over 5 min. Script only ends when a button is pressed.
+# Random Leds slowly light up increasing brightness. Script only ends when a button is pressed.
+# Modify the below variables to set a preferred section of strip and how strength of preference
 
-prefer_start = 20
+prefer_start = 36
 prefer_end = 59
-prefer_percent = 80
+prefer_percent = 90
 
+inWaitMode = False
 # Turn off all lights and end script
 def shutOff():
     for i in range(60):
@@ -16,6 +18,8 @@ def shutOff():
 
 # Turn off side lights
 def waitMode():
+    global inWaitMode
+    inWaitMode = True
     for i in range(36):
         strip.setPixelColorRGB(i, 0, 0, 0)
         strip.show()
@@ -23,7 +27,7 @@ def waitMode():
 
 # Generate Loop. j = max brightness. x = pixels per loop
 def pixelLoop(j,x):
-    for i1 in range(j):
+    for i1 in range(1,j):
         for i2 in range(x):
             yield i1, i2
 
@@ -35,6 +39,7 @@ import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 
 import random
+import math
 
 from threading import Timer
 timer = Timer(45.0,waitMode)
@@ -47,13 +52,13 @@ strip.begin()
 
 # Increase Brightness. Random LED. 1 Color.
 print("Increasing Brightness ...")
-for a,b in pixelLoop(256,12):
-    if random.randint(0,100) < prefer_percent:
+for a,b in pixelLoop(256,5):
+    if random.randint(0,100) <= prefer_percent:
         strip.setPixelColorRGB(random.randint(prefer_start,prefer_end),int(a/2),a,a)
     else:
         strip.setPixelColorRGB(random.randint(0,prefer_start),int(a/2),a,a)
     strip.show()
-    sleep(0.01)
+    sleep(1 / math.ceil(a/1))
     if GPIO.input(23) == 0: #Btn Press
         waitMode() #Turn off side
         for i in range(36,60): #Top to full brightness
@@ -61,13 +66,14 @@ for a,b in pixelLoop(256,12):
             strip.show()
             sleep(.05)
         break
-
+print('Done')
 # Only if not already in waitMode
-if strip.getPixelColor(0) != 0:
+if not inWaitMode:
     # Make Sure Every LED is at full brightness
     for i in range(60):
         strip.setPixelColorRGB(i,128,255,255)
-    strip.show()
+        sleep(0.05)
+        strip.show()
 
     timer.start()
 
