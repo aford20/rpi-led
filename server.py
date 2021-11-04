@@ -350,7 +350,7 @@ class Main(object):
 		try: # Throw error if no job ...
 			job.clear()
 		except: # ... So create one
-			job = cron.new(command = 'sudo python ' + os.path.abspath(os.path.dirname(__file__)) + '/alarm.py' , comment='alarm ID' + str(ID))
+			job = cron.new(command = 'sudo python3 ' + os.path.abspath(os.path.dirname(__file__)) + '/alarm.py' , comment='alarm ID' + str(ID))
 		finally: # Edit properties
 
 			# Check enabled state
@@ -370,12 +370,12 @@ class Main(object):
 				path = os.path.abspath(os.path.dirname(__file__)) + '/alarm.py'
 				# Remove Delay from string
 				alarm = alarm[slice(-6)]
-			job.set_command("sudo python " + path)
+			job.set_command("sudo python3 " + path)
 
 			# Check for one-time run
 			if alarm.split(" ")[4] == "*":
 				job.set_comment("alarm ID" + str(ID))
-				job.set_command("sudo python " + path + ' && sudo python ' + os.path.abspath(os.path.dirname(__file__)) + '/DeleteJob.py' + str(ID))
+				job.set_command("sudo python3 " + path + ' && sudo python3 ' + os.path.abspath(os.path.dirname(__file__)) + '/DeleteJob.py ' + str(ID))
 
 			# Add all other properties
 			job.setall(alarm)
