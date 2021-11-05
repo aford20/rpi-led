@@ -1,10 +1,10 @@
 # This script is called by crontab at a certain time to function as an alarm clock.
 # Random Leds slowly light up increasing brightness. Script only ends when a button is pressed.
-# Modify the below variables to set a preferred section of strip and how strength of preference
+# Modify the below variables to set a preferred section of strip and strength of preference
 
 prefer_start = 36
 prefer_end = 59
-prefer_percent = 90
+prefer_percent = 75
 
 inWaitMode = False
 # Turn off all lights and end script
@@ -58,7 +58,7 @@ for a,b in pixelLoop(256,5):
     else:
         strip.setPixelColorRGB(random.randint(0,prefer_start),int(a/2),a,a)
     strip.show()
-    sleep(1 / math.ceil(a/1))
+    sleep(1 / math.ceil(a/10))
     if GPIO.input(23) == 0: #Btn Press
         waitMode() #Turn off side
         for i in range(36,60): #Top to full brightness
