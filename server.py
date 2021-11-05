@@ -197,7 +197,6 @@ class Main(object):
 					data.append(override[a])
 
 		self.animate.stop()
-		del self.animate
 
 		interval = float(data[0])
 		pattern = data[slice(1,len(data))]
@@ -259,7 +258,17 @@ class Main(object):
 			pattern = ComputedStrip
 			del ComputedStrip
 
+			prestrip = []
+			if transition == 'allDissolve':
+				for x in range(self.strip.numPixels()):
+					prestrip.append(("000000" + str(format(pattern[0],'x')))[-6:])
+			else:
+				for x in range(self.strip.numPixels()):
+					prestrip.append(("000000" + str(format(pattern[x],'x')))[-6:])
+			self.dissolve(prestrip) # Predissolve to avoid jump
+
 		if interval != 0:
+			del self.animate
 			self.animate = RepeatedTimer(interval, Animation, transition)
 		thread = Thread(target = Animation, args = (transition, ))
 		thread.start()
