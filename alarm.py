@@ -7,6 +7,7 @@ prefer_end = 59
 prefer_percent = 75
 
 inWaitMode = False
+
 # Turn off all lights and end script
 def shutOff():
     for i in range(60):
@@ -46,27 +47,26 @@ timer = Timer(45.0,waitMode)
 
 # Strip and GPIO Setup
 GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 strip = Adafruit_NeoPixel(60, 18, 800000, 10, False, 255)
 strip.begin()
 
 # Increase Brightness. Random LED. 1 Color.
 print("Increasing Brightness ...")
-for a,b in pixelLoop(256,5):
+for a,b in pixelLoop(256,7):
     if random.randint(0,100) <= prefer_percent:
         strip.setPixelColorRGB(random.randint(prefer_start,prefer_end),int(a/2),a,a)
     else:
         strip.setPixelColorRGB(random.randint(0,prefer_start),int(a/2),a,a)
     strip.show()
-    sleep(1 / math.ceil(a/10))
+    sleep(1 / math.ceil(a/12))
     if GPIO.input(23) == 0: #Btn Press
         waitMode() #Turn off side
-        for i in range(36,60): #Top to full brightness
+        for i in range(prefer_start,prefer_end): #Top to full brightness
             strip.setPixelColorRGB(i,128,255,255)
             strip.show()
             sleep(.05)
         break
-print('Done')
+
 # Only if not already in waitMode
 if not inWaitMode:
     # Make Sure Every LED is at full brightness
@@ -78,8 +78,9 @@ if not inWaitMode:
     timer.start()
 
 while True:
-    # Shutdown on btn press
-    if GPIO.input(23) == 0:
-        timer.cancel()
+    GPIO.wait_for_edge(23,GPIO.FALLING)
+    timer.cancel()
+    if inWaitMode:
         shutOff()
-    sleep(0.1)
+    else:
+        waitMode()
