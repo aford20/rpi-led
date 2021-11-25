@@ -397,7 +397,8 @@ class Main(object):
 	@cherrypy.expose
 	def shutdown(self):
 		self.animate.stop()		# Stop Pattern
-		os.system('ifconfig wlan0 down')	# Shutdown Wifi
+		yield "True"
+		#os.system('ifconfig wlan0 down')	# Shutdown Wifi
 		cherrypy.engine.exit()
 
 	# Shutdown Raspberry Pi Endpoint
