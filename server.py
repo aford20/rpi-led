@@ -13,7 +13,7 @@ import math
 #---
 import configparser
 cfg = configparser.ConfigParser()
-cfg.read('config.conf')
+cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
 
 cherrypy.config.update({
 		'server.socket_host' : '0.0.0.0',
