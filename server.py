@@ -10,6 +10,10 @@ from crontab import CronTab
 import re
 # ---
 import math
+#---
+import configparser
+cfg = configparser.ConfigParser()
+cfg.read('config.conf')
 
 cherrypy.config.update({
 		'server.socket_host' : '0.0.0.0',
@@ -443,8 +447,8 @@ class Main(object):
 			self.unsubscribe() # unsubscribe from engine activity
 
 if __name__ == '__main__':
-	cherrypy.tree.mount(Main(60,18,0), '/', config) # Main Thread
+	cherrypy.tree.mount(Main(int(cfg['strip1']['length']),int(cfg['strip1']['gpio_pin']),int(cfg['strip1']['channel'])), '/', config) # Main Thread
 	sleep(1)
-	#cherrypy.tree.mount(Main(50,13,1), '/aux1', config) # Secondary
+	#cherrypy.tree.mount(Main(int(cfg['strip1']['length']),int(cfg['strip1']['gpio_pin']),int(cfg['strip1']['channel'])), '/aux1', config) # Secondary
 	cherrypy.engine.start()
 	cherrypy.engine.block()

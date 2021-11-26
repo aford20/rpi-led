@@ -10,7 +10,7 @@ inWaitMode = False
 
 # Turn off all lights and end script
 def shutOff():
-    for i in range(60):
+    for i in range(strip.numPixels()):
         strip.setPixelColorRGB(i, 0, 0, 0)
         strip.show()
         sleep(.02)
@@ -21,7 +21,7 @@ def shutOff():
 def waitMode():
     global inWaitMode
     inWaitMode = True
-    for i in range(36):
+    for i in range(prefer_start):
         strip.setPixelColorRGB(i, 0, 0, 0)
         strip.show()
         sleep(.05)
@@ -45,9 +45,14 @@ import math
 from threading import Timer
 timer = Timer(45.0,waitMode)
 
+# Import Config File
+import configparser
+cfg = configparser.ConfigParser()
+cfg.read('config.conf')
+
 # Strip and GPIO Setup
 GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-strip = Adafruit_NeoPixel(60, 18, 800000, 10, False, 255)
+strip = Adafruit_NeoPixel(int(cfg['strip1']['length']), int(cfg['strip1']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip1']['channel']))
 strip.begin()
 
 # Increase Brightness. Random LED. 1 Color.
@@ -70,7 +75,7 @@ for a,b in pixelLoop(256,7):
 # Only if not already in waitMode
 if not inWaitMode:
     # Make Sure Every LED is at full brightness
-    for i in range(60):
+    for i in range(strip.numPixels()):
         strip.setPixelColorRGB(i,128,255,255)
         sleep(0.05)
         strip.show()
