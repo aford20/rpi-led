@@ -46,9 +46,10 @@ from threading import Timer
 timer = Timer(45.0,waitMode)
 
 # Import Config File
+import os.path
 import configparser
 cfg = configparser.ConfigParser()
-cfg.read('config.conf')
+cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
 
 # Strip and GPIO Setup
 GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_UP)
