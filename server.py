@@ -402,7 +402,7 @@ class Main(object):
 	def shutdown(self):
 		self.animate.stop()		# Stop Pattern
 		yield "True"
-		#os.system('ifconfig wlan0 down')	# Shutdown Wifi
+		os.system('ifconfig wlan0 down')	# Shutdown Wifi
 		cherrypy.engine.exit()
 
 	# Shutdown Raspberry Pi Endpoint
