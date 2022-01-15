@@ -47,6 +47,8 @@ function loadElements() {
 		updatePreview('000000',false)
     // Get live strip color
     returnColor();
+		// Check Autodissolve
+		document.getElementById('autodissolve').checked = true;
 };
 
 function returnColor() {
@@ -238,7 +240,7 @@ function autoupdate() {
         <span> Auto-take:
             <input type="checkbox" id="autotake" onclick="autotake()"></span><!--
         --><span> Auto-dissolve:
-            <input type="checkbox" id="autodissolve" onclick="autodissolve()" checked=true></span><br/><!--
+            <input type="checkbox" id="autodissolve" onclick="autodissolve()"></span><br/><!--
         --><span> Auto-wipe:
             <input type="checkbox" id="autowipe" onclick="autowipe()"></span><!--
         --><span> Refresh Continuously:

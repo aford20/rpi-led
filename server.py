@@ -59,7 +59,6 @@ class RepeatedTimer(object):
 
 @cherrypy.popargs('transition')
 class Main(object):
-
 	def __init__(self, length, pin,channel):
 		self.strip = Adafruit_NeoPixel(length, pin, 800000, 10, False, 255,channel)
 		self.strip.begin()
@@ -350,7 +349,7 @@ class Main(object):
 	def SaveAlarm(self):
 		# Get Data
 		data = cherrypy.request.json
-
+		print(data)
 		# Setup Cron
 		cron = CronTab(user='root')
 
@@ -397,13 +396,19 @@ class Main(object):
 		cron.write()
 		return Main.getAlarms(self)
 
-	# Shutdown Server Endpoint
-	@cherrypy.expose
-	def shutdown(self):
-		self.animate.stop()		# Stop Pattern
-		yield "True"
+	# Shutdown server function
+	def ServerOff():
 		os.system('ifconfig wlan0 down')	# Shutdown Wifi
 		cherrypy.engine.exit()
+
+	cherrypy.tools.ServerOff = cherrypy.Tool('on_end_request', ServerOff) # Hook function to tool. End request to allow return to send before wifi goes down.
+
+	# Shutdown Server Endpoint
+	@cherrypy.expose
+	@cherrypy.tools.ServerOff() # Connect Endpoint to tool
+	def shutdown(self):
+		self.animate.stop()		# Stop Pattern
+		return
 
 	# Shutdown Raspberry Pi Endpoint
 	@cherrypy.expose
@@ -414,11 +419,11 @@ class Main(object):
 
 		if data == passwd:
 			os.system('sudo shutdown')
-			#os.system('sudo shutdown -c')
 			yield "Raspberry Pi shutting down in about a minute ... "
-			self.shutdown()
+			cherrypy.engine.exit()
 		else:
 			return "Incorrect Password"
+
 
 	# Class to catch engine exit and turn off things nicely
 	class turnOff(SimplePlugin):
