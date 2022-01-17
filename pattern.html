@@ -4,44 +4,44 @@
 	<title>Pattern | Raspberry Pi</title>
 <link rel="stylesheet" type="text/css" href="/style.css">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="scripts/jquery.min.js"></script> 
+<script src="scripts/jquery.min.js"></script>
 <script src="scripts/jquery-ui.min.js"></script>
 <script src="scripts/script.js"></script>
-<script>	
+<script>
 window.onload = function() {
-	
+
 	// Variable Setup
 	pixelData = ["000000"];
 	pix = document.getElementsByClassName("pix");
 	activePix = 0
 	remove = false
-	
+
 	// Add Pixel Event Handlers
 	for (var i = 0; i < pix.length; i++) {
 		$(pix[i]).click(PixClick)
 		.draggable({helper:'clone', start:drag})
-	}	
-	
+	}
+
 	// Onclick for 'add'
 	document.getElementById('add').onclick = function(event) {
 		document.getElementById('active').removeAttribute('id'); // Unhighlight Old Pix
-		
+
 		$(pix[pix.length - 1]).after('<div class="pix">&nbsp;</div>'); // Make New pix
 		pix = document.getElementsByClassName("pix"); // Refresh listing
-		
+
 		activePix = pix.length - 1; // Make new pix active
-		
+
 		// Add Event Handlers
 		$(pix[activePix]).click(PixClick)
 		.draggable({helper:'clone', start:drag})
-		
+
 		pixelData[activePix] = "000000";
 		pix[activePix].setAttribute("id", "active");
 		$('#pixCont').scrollLeft(170*activePix-$('#pixCont').width()/2+170/2)
-		
+
 		setSliders(pixelData[activePix]) // Update RGB Sliders
 	}
-	
+
 	// Add compile function to RGB sliders
     for (var i = 0; i < slider.length; i++) {
         slider[i].oninput = function(event) {
@@ -52,14 +52,14 @@ window.onload = function() {
             updatePreview(true);
         }
     }
-    
+
     speeds = [0,0.05,0.1,0.15,0.2,0.25,0.5,0.75,1,1.5,2,3,4,5,10];
     // Input for Master
     document.getElementById("speed").oninput = function(event) {
         // Show Value
         event.currentTarget.nextSibling.innerHTML = speeds[event.currentTarget.value];
     }
-    
+
     // Input for Master
     document.getElementById("master").oninput = function(event) {
         // Show Value
@@ -67,16 +67,38 @@ window.onload = function() {
         clearTimeout(DissolveTimer);
 		updatePreview(true)
     }
-    
+
 	// Palette Event Handlers
 	palette = document.getElementById('buttonContainer').children;
 	for (var i = 0; i < palette.length; i++) {
 		// Set up drag properties
 		$(palette[i]).droppable({drop: drop});
 		// On Click
-		palette[i].onclick = function(event) {
+		$(palette[i]).on('click',function(e){
+			if(e.originalEvent.detail > 1){ // Prevent action during double click
+				return;
+			}
 			pixelData[activePix] = event.currentTarget.getAttribute("hexCode");
 			updatePreview()
+		})
+		// Double click. Take single color whole strip live.
+		palette[i].ondblclick = function(event) {
+			config = { // Set up Ajax Config
+					'type'        : 'POST',
+					'dataType'    : 'JSON',
+					'contentType' : 'application/json',
+					'data'        : JSON.stringify([event.currentTarget.getAttribute("hexCode")])
+					}
+			// Check for Autos
+			if (document.getElementById('autotake').checked == true) {
+					config.url = 'staticLive?transition=take';
+			}	else if (document.getElementById('autowipe').checked == true) {
+				config.url = 'staticLive?transition=wipe';
+			} else {
+				config.url = 'staticLive?transition=dissolve';
+			}
+			// Send Request
+			jQuery.ajax(config);
 		}
 	}
 }
@@ -86,36 +108,36 @@ function PixClick() {
 	if (remove == false) {
 		document.getElementById('active').removeAttribute('id');
 		me.setAttribute("id", "active");
-		
+
 		// Calculate Index Value
 		for (var i=0; (me=me.previousSibling); i++);
 		activePix = i-1
-		
+
 		// Center Pix in Scroll
 		// Total Width including margins * number of pix before - half of container width + half of total pix width)
 		$('#pixCont').scrollLeft(170*activePix-$('#pixCont').width()/2+170/2)
-		
+
 		setSliders(pixelData[activePix]) // Update RGB Sliders
 	} else {
 		// Calc Index Value
 		for (var i=0; (me=me.previousSibling); i++);
 		activePix = i-1;
-		
+
 		pixelData.splice(activePix,1); // Remove from array
 		$(this).remove(); //Delete element
-		
+
 		if (activePix == pixelData.length) {activePix -= 1} // Select last pix if this was last pix
-	
+
 		$(pix).css("box-shadow",""); // Unhighlight everything
 		pix[activePix].setAttribute("id", "active"); // Highlight activePix
 		setSliders(pixelData[activePix]) // Update RGB Sliders
 		remove = false;
 	}
-    
+
 }
 
 // Multiply input color by Master. Requires converting to rgb and back.
-function xMaster(hexPre, bright = false) { 
+function xMaster(hexPre, bright = false) {
     var hexPost = ""
     for (var x=0; x<3; x++) {
         // Convert to RGB and Multiply by master
@@ -134,12 +156,12 @@ function xMaster(hexPre, bright = false) {
 
 // Update Preview strip to show changes
 function updatePreview(delay) {
-    
+
     // Set color of each pixel.
     for (var i=0; i< pixelData.length; i++) {pix[i].style.backgroundColor = '#' + xMaster(pixelData[i],true)}
-    
+
     setSliders(pixelData[activePix]) // Update RGB Sliders
-    
+
     // Check for Autotake
     if (document.getElementById('autotake').checked == true) {
         goLive();
@@ -165,31 +187,31 @@ function updatePreview(delay) {
 
 // Parse data and submit request
 function goLive(dis = false, wipe = false) {
-	
+
     var colorHex = [];
     // Reorder each pixel into GRB
     for (var x=0; x < pixelData.length ; x++) {
         colorHex[x] = xMaster(pixelData[x]);
     }
-    
+
     // Set up Ajax Config
     config = {
         'type'        : 'POST',
         'dataType'    : 'JSON',
         'contentType' : 'application/json'
         }
-        
-    if (dis == true && parseInt(document.getElementById("speed").value) == 0) { config.url = 'staticLive?transition=dissolve'} 
+
+    if (dis == true && parseInt(document.getElementById("speed").value) == 0) { config.url = 'staticLive?transition=dissolve'}
     else if (wipe == true && parseInt(document.getElementById("speed").value) < 2) {config.url = 'staticLive?transition=wipe'}
     else if (parseInt(document.getElementById("speed").value) == 0) {config.url = 'staticLive?transition=take'}
     else {
 	colorHex.splice(0,0,speeds[document.getElementById("speed").value]);
-        if (wipe == true) {config.url = 'pattern?transition=wipe'} 
+        if (wipe == true) {config.url = 'pattern?transition=wipe'}
 	else if (dis == true && document.getElementById('single').checked) {config.url = 'pattern?transition=allDissolve'}
 	else if (dis == true) {config.url = 'pattern?transition=dissolve'}
 	else if (document.getElementById("speed").value != 0 && document.getElementById('single').checked) {config.url = 'pattern?transition=allTake'}
 	else {config.url = 'pattern?transition=take'}
-    } 
+    }
     config.data = JSON.stringify(colorHex)
     // Send Request
     jQuery.ajax(config);
@@ -212,7 +234,7 @@ function allowDrop(ev) {
     ev.preventDefault();
 }
 
-function drag(ev,ui) {	
+function drag(ev,ui) {
 	var me = ev.currentTarget
 	for (var i=0; (me=me.previousSibling); i++);
 	activeIndex = i-1;
@@ -221,7 +243,7 @@ function drag(ev,ui) {
 function drop(event,ui) {
     var data = pixelData[activeIndex]
     $(this).attr('hexCode',data).html(data); // Save
-    function brighten(hexPre) { 
+    function brighten(hexPre) {
 	var hexPost = ""
 	for (var x=0; x<3; x++) {
 	    // Convert to RGB and Multiply by master
@@ -244,8 +266,8 @@ function drop(event,ui) {
 #pixCont {
 	width:auto;
     white-space: nowrap; overflow-x: auto; padding: 10px 0px;
-}	
-	
+}
+
 .pix {
 	width:150px;height:150px;
 	background-color:#000000;
@@ -275,7 +297,7 @@ function drop(event,ui) {
 </head>
 <body>
 
-<div id='pixCont'>	
+<div id='pixCont'>
 	<div class="pix" id="active">&nbsp;</div>
 	<div id="add">+</div>
 </div>
@@ -285,7 +307,7 @@ function drop(event,ui) {
     --><button onclick="goLive(true)" class=takeControls id="dissolve" style="border-color:#00bcce;color:#00bcce">Dissolve</button><!--
     --><button onclick="goLive(false,true)" class=takeControls id="wipe" style="border-color:#009e00;color:#009e00">Wipe</button><!--
     --><button class="takeControls" style="border-color:#ff3030;color:#ff3030;" onclick="Remove()"> Remove </button><!--
---></div>  
+--></div>
 
 <ul id="palSwitch">
 	<li>RGB</li><!--
@@ -309,7 +331,7 @@ function drop(event,ui) {
     <button style="border-color:#f00; color:#f00;" hexCode = "ff0000">Red</button>
     <button style="border-color:#0f0; color:#0f0;" hexCode = "00ff00">Green</button>
     <button style="border-color:rgb(55,55,255); color:rgb(55,55,255);" hexCode = "0000ff" >Blue</button>
-    <button style="border-color:#ffaf00;color:#ffaf00;" hexCode = "ffaf00" >Orange</button>
+    <button style="border-color:#ff6000;color:#ff6000;" hexCode = "ff6000" >Orange</button>
 </div>
 
 <!-- Settings Drawer -->
@@ -318,7 +340,7 @@ function drop(event,ui) {
 	<input type="range" min="0" max="14" value="0" step="1" id="speed"><p>0</p>
 	<span>Master</span>
     <input type="range" min="0" max="100" value="100" id="master"><p>100</p>
-	<div id="chkOptions"> 
+	<div id="chkOptions">
 		<span> Auto-take:
             <input type="checkbox" id="autotake" onclick="autotake()"></span><!--
         --><span> Auto-dissolve:
@@ -327,10 +349,10 @@ function drop(event,ui) {
             <input type="checkbox" id="autowipe" onclick="autowipe()"></span><!--
 	--><span> Single Color Mode:
             <input type="checkbox" id="single"></span>
-        
+
     </div>
     <a href="index.html" ><button style="border-color:#c24700;color:#c24700;"> Home </button></a>
-    
+
 </div>
 </body>
 </html>

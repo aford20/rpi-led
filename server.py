@@ -454,6 +454,6 @@ class Main(object):
 if __name__ == '__main__':
 	cherrypy.tree.mount(Main(int(cfg['strip1']['length']),int(cfg['strip1']['gpio_pin']),int(cfg['strip1']['channel'])), '/', config) # Main Thread
 	sleep(1)
-	#cherrypy.tree.mount(Main(int(cfg['strip1']['length']),int(cfg['strip1']['gpio_pin']),int(cfg['strip1']['channel'])), '/aux1', config) # Secondary
+	cherrypy.tree.mount(Main(int(cfg['strip2']['length']),int(cfg['strip2']['gpio_pin']),int(cfg['strip2']['channel'])), '/aux1', config) # Secondary
 	cherrypy.engine.start()
 	cherrypy.engine.block()

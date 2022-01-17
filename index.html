@@ -34,6 +34,7 @@ function PiOff() {
     })
     .done(function( data, textStatus, jqXHR ) {
         alert(data);
+        document.getElementsByTagName('body')[0].style.opacity = '0.2'
         //if (data == 1) {alert("Password Correct. Raspberry Pi Shutting down.");}
         //else {alert("Password Incorrect");}
     })
@@ -44,24 +45,30 @@ function PiOff() {
     event.preventDefault();
 }
 window.onload = function() {
+  // Check for aux to show toggle
+  if (window.location.href.includes('aux') == true) {
 
-$('#ToggleSync').click( function(e) {
-  console.log(e.currentTarget.checked);
-  if (e.currentTarget.checked) {
-    jQuery.ajax({
-        'type'        : 'get',
-        'contentType' : 'application/json',
-        'url'         : 'isSync?state=True'
-    })
-  } else {
-    jQuery.ajax({
-        'type'        : 'get',
-        'contentType' : 'application/json',
-        'url'         : 'isSync?state=False'
-    })
+    $('#alarms').css('display','none'); // Hide alarms
+    $('#sync').css('display','block'); // Show toggle
+
+    // Add Listener to Sync Toggle
+    $('#ToggleSync').click( function(e) {
+      console.log(e.currentTarget.checked);
+      if (e.currentTarget.checked) {
+        jQuery.ajax({
+            'type'        : 'get',
+            'contentType' : 'application/json',
+            'url'         : 'isSync?state=True'
+        })
+      } else {
+        jQuery.ajax({
+            'type'        : 'get',
+            'contentType' : 'application/json',
+            'url'         : 'isSync?state=False'
+        })
+      }
+    });
   }
-});
-
 }
 </script>
 <style>
@@ -102,7 +109,7 @@ a {
 	<h2 class='sec'><span>LED Control</span></h2>
 	<a href='Leds.html' style='color:#1652a9;border-color:#1652a9'>Whole Strip Mode</a>
 	<a href='IALeds.html' style='border-color:#52a916;color:#52a916;width:48%'>Individual Mode</a><a href='pattern.html' style='border-color:#9216a9;color:#9216a9;width:48%'>Pattern Mode</a>
-  <a style='display:block;border:none;'>Sync <label class="switch" >
+  <a id='sync' style='display:none;border:none;'>Sync <label class="switch" >
     <input type="checkbox" class='enabled' id='ToggleSync'>
     <span class="toggle round"></span>
   </label></a>
