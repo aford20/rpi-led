@@ -45,15 +45,17 @@ function PiOff() {
     event.preventDefault();
 }
 window.onload = function() {
-  // Check for aux to show toggle
+  // Check if this is aux to show toggle
   if (window.location.href.includes('aux') == true) {
-
     $('#alarms').css('display','none'); // Hide alarms
-    $('#sync').css('display','block'); // Show toggle
+    $('#auxLink').text('Main Strip').attr('href','/') // Change Aux link to Main Strip
 
-    // Add Listener to Sync Toggle
-    $('#ToggleSync').click( function(e) {
-      console.log(e.currentTarget.checked);
+    $.ajax({url: 'syncState', success: function(data, textStatus) { // Get Synced state
+      $('#ToggleSync').attr('checked',data == "True"); // Update Checkbox and convert string to bool
+    }})
+
+    $('#sync').css('display','block'); // Show toggle
+    $('#ToggleSync').click( function(e) { // Add Listener to Sync Toggle
       if (e.currentTarget.checked) {
         jQuery.ajax({
             'type'        : 'get',
@@ -68,6 +70,15 @@ window.onload = function() {
         })
       }
     });
+
+  } else { // Check to see if aux exists
+    $.ajax({url: '/aux1', success: function(data, textStatus) {
+            // Aux exists. Do nothing.
+      }, error: function(jqXHR, textStatus, errorThrown) {
+            // Aux doesn't exist. Hide the link.
+            $('#auxLink').css('display','none');
+            $('#auxLink').next().css('display','none');
+      }});
   }
 }
 </script>
@@ -116,6 +127,8 @@ a {
 </div>
 <hr class='hrSec' style='top:40px; margin-bottom:40px;'>
 <br /><br />
+<a id='auxLink' href="aux1/" >Aux Strip</a>
+<br />
 <a id='shutdown' onclick="shutdown()" style='border-color:#c60000;color:#c60000;'>Shutdown Server</a>
 <br /><br />
 <a id='PiOff' onclick="PiOff()" style="border-color:#404040;color:#404040">Shutdown Raspberry Pi</a>

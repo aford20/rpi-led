@@ -59,7 +59,7 @@ class RepeatedTimer(object):
 
 @cherrypy.popargs('transition')
 class Main(object):
-	def __init__(self, length, pin,channel):
+	def __init__(self, length, pin,channel, begin_synced = False):
 		self.strip = Adafruit_NeoPixel(length, pin, 800000, 10, False, 255,channel)
 		self.strip.begin()
 		self.strip.setPixelColorRGB(length-1,0,1,0)
@@ -70,6 +70,9 @@ class Main(object):
 		self.animate = RepeatedTimer(100, stuff)
 		self.animate.stop()
 
+		# Subscribe when begin synced
+		if begin_synced == True:
+			self.isSync('True')
 		self.subscribeShutdown() # Not sure why it has to be like this but things get wacky if it isn't
 
 	# Subscribe to engine activity so it can shutdown nicely
@@ -78,22 +81,26 @@ class Main(object):
 
 	@cherrypy.expose
 	@cherrypy.popargs('state')
-	def isSync(self,state):
-		print(state)
+	def isSync(self,state): # Set Sync State
 		if state == 'True':
 			cherrypy.engine.subscribe("sync", self.syncer)
+			self.isSynced = True
 		else:
 			cherrypy.engine.unsubscribe("sync", self.syncer)
+			self.isSynced = False
 
+	# Handle events to keep synced
 	def syncer(self,epoint,t,data=''):
-		#self.bus.log('got sync stuff')
-		#print(t)
 		if epoint == 'static':
 			self.staticLive(t,data,False)
 		elif epoint == 'pattern':
 			self.pattern(t,data,False)
 		elif epoint == 'rainbow':
 			self.rainbow(transition=t,sync=False)
+
+	@cherrypy.expose
+	def syncState(self): # Get sync state
+		return str(self.isSynced)
 
 	@cherrypy.expose
 	@cherrypy.tools.json_in()
@@ -311,8 +318,7 @@ class Main(object):
 		self.animate = RepeatedTimer(float(transition), Fade)
 		Fade()
 
-		# Sync Message
-		if sync:
+		if sync: # Sync Message
 			cherrypy.engine.publish('sync','rainbow',transition)
 
 	# Alarms
@@ -454,6 +460,6 @@ class Main(object):
 if __name__ == '__main__':
 	cherrypy.tree.mount(Main(int(cfg['strip1']['length']),int(cfg['strip1']['gpio_pin']),int(cfg['strip1']['channel'])), '/', config) # Main Thread
 	sleep(1)
-	cherrypy.tree.mount(Main(int(cfg['strip2']['length']),int(cfg['strip2']['gpio_pin']),int(cfg['strip2']['channel'])), '/aux1', config) # Secondary
+	cherrypy.tree.mount(Main(int(cfg['strip2']['length']),int(cfg['strip2']['gpio_pin']),int(cfg['strip2']['channel']),True), '/aux1', config) # Secondary
 	cherrypy.engine.start()
 	cherrypy.engine.block()
