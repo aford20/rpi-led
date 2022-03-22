@@ -43,6 +43,13 @@ function loadElements() {
         updatePreview(pvColor,true);
     }
 
+		// On input function for Fade out slider
+    document.getElementById("fade_out").oninput = function(event) {
+        // Show Value
+        event.currentTarget.nextSibling.innerHTML = event.currentTarget.value;
+        
+    }
+
 		// Color preview tile
 		updatePreview('000000',false)
     // Get live strip color
@@ -136,7 +143,10 @@ function goLive(dis = false, wipe = false) {
         'data'        : JSON.stringify([preview.innerHTML])
         }
     // Modify config
-    if (dis == true ) {
+    if (document.getElementById('fade_out').value != 0) {
+            config.data = JSON.stringify([document.getElementById("fade_out").value*100,preview.innerHTML,'000000'])
+            config.url = 'pattern?transition=fadeOut';
+    } else if (dis == true ) {
         config.url = 'staticLive?transition=dissolve';
         config.success = setTimeout(returnColor, 1000);
     } else if (wipe == true) {
@@ -246,6 +256,7 @@ function autoupdate() {
         --><span> Refresh Continuously:
             <input type="checkbox" id="autoupdate" onclick="autoupdate()" ></span>
     </div>
+		<input type="range" min="0" max="30" value="0" id="fade_out" class="slider2"><p>0</p>
     <button onclick="LiveToPreview()" style="border-color:#a00000;color:#a00000">Live to Preview</button>
     <a href="IALeds.html" ><button style="border-color:#52a916;color:#52a916"> Individual Mode </button></a>
     <a href="index.html" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>

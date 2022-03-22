@@ -25,11 +25,11 @@ body {
 		--accent2: Button Backgrounds, Borders, Days of Week
 		--disabled: Disabled checkboxes */
 
-		/* Default
-		--main:#202020;	--secondary:#ffffff;	--accent1:#e89700;	--accent2:#505050;	--disabled:#c3c3c3;*/
+		/* Default */
+		--main:#202020;	--secondary:#ffffff;	--accent1:#e89700;	--accent2:#505050;	--disabled:#c3c3c3;
 
-		/* Winter Candy */
-		--main:#F0F3F5;	--secondary:#393D3F;	--accent1:#E8436A;	--accent2:#E89292;	--disabled:#c3c3c3;
+		/* Winter Candy
+		--main:#F0F3F5;	--secondary:#393D3F;	--accent1:#E8436A;	--accent2:#E89292;	--disabled:#c3c3c3;*/
 
 		/* Spring
 		--main:#d6ffc6;	--secondary:#005800;	--accent1:#11850f;	--accent2:#668934;	--disabled:#c3c3c3; */
@@ -104,7 +104,7 @@ button {
     cursor: pointer;
 }
 
-#master, #speed {
+#master, #speed, .slider2 {
     -webkit-appearance: none;
     width: 90%;
     height:20px;
@@ -117,7 +117,7 @@ button {
     transition: opacity .2s;
 }
 
-#master::-webkit-slider-thumb, #speed::-webkit-slider-thumb {
+#master::-webkit-slider-thumb, #speed::-webkit-slider-thumb, .slider2::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     width: 40px;
@@ -127,7 +127,7 @@ button {
     cursor: pointer;
 }
 
- #master::-moz-range-thumb, #master::-moz-range-thumb {
+ #master::-moz-range-thumb, #speed::-moz-range-thumb, .slider2::-moz-range-thumb {
     width: 40px;
     height: 40px;
     border-radius: 50%;

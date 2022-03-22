@@ -62,8 +62,8 @@ class Main(object):
 	def __init__(self, length, pin,channel, begin_synced = False):
 		self.strip = Adafruit_NeoPixel(length, pin, 800000, 10, False, 255,channel)
 		self.strip.begin()
-		self.strip.setPixelColorRGB(length-1,0,1,0)
-		self.strip.show()
+		#self.strip.setPixelColorRGB(length-1,0,1,0)
+		#self.strip.show()
 
 		def stuff(): # Setup the animation timer. It needs some function
 			pass # and the others in the class don't exist yet
@@ -238,13 +238,19 @@ class Main(object):
 				for i in range(self.strip.numPixels()):
 					self.strip.setPixelColor(i,pattern[shift])
 				self.strip.show()
+			elif t == 'fadeOut':
+				if shift >= stoplength:
+					self.animate.stop()
+				for i in range(self.strip.numPixels()):
+					self.strip.setPixelColor(i,pattern[shift])
+				self.strip.show()
 
 		if transition == 'take': # Clone pattern for take
 			for i in range(len(pattern)): # Convert to decimal
 				pattern[i] = int(pattern[i],16)
 			while len(pattern) < self.strip.numPixels(): # Duplicate for each pixel
 				pattern += pattern
-		elif transition == 'dissolve' or transition == 'allDissolve': # Compute Pattern for Dissolve
+		elif transition == 'dissolve' or transition == 'allDissolve'  or transition == 'fadeOut': # Compute Pattern for Dissolve
 			pattern.append(pattern[0]) # Add extra stop to fade back to beginning
 
 			if transition == 'dissolve':
@@ -269,7 +275,7 @@ class Main(object):
 			del ComputedStrip
 
 			prestrip = []
-			if transition == 'allDissolve':
+			if transition == 'allDissolve' or transition == 'fadeOut':
 				for x in range(self.strip.numPixels()):
 					prestrip.append(("000000" + str(format(pattern[0],'x')))[-6:])
 			else:
@@ -368,7 +374,7 @@ class Main(object):
 		try: # Throw error if no job ...
 			job.clear()
 		except: # ... So create one
-			job = cron.new(command = 'sudo python3 ' + os.path.abspath(os.path.dirname(__file__)) + '/alarm.py' , comment='alarm ID' + str(ID))
+			job = cron.new(command = 'sudo python3 ' + os.path.abspath(os.path.dirname(__file__)) + '/simple-alarm.py' , comment='alarm ID' + str(ID))
 		finally: # Edit properties
 
 			# Check enabled state
@@ -385,7 +391,7 @@ class Main(object):
 				alarm = alarm[slice(-5)]
 			# Path if not delay
 			else:
-				path = os.path.abspath(os.path.dirname(__file__)) + '/alarm.py'
+				path = os.path.abspath(os.path.dirname(__file__)) + '/simple-alarm.py'
 				# Remove Delay from string
 				alarm = alarm[slice(-6)]
 			job.set_command("sudo python3 " + path)
