@@ -17,7 +17,14 @@ cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
 
 cherrypy.config.update({
 		'server.socket_host' : '0.0.0.0',
-		'server.socket_port' : 80
+		#'server.socket_port' : 80,
+
+		#'server.socket_port' : 433,
+		#'server.ssl_module': 'builtin',
+		#'server.ssl_certificate': os.path.abspath(os.path.dirname(__file__))+'/srv.crt',
+		#'server.ssl_private_key' : os.path.abspath(os.path.dirname(__file__))+'/srv.key'
+		#'server.ssl_certificate': "foo.crt",
+		#'server.ssl_private_key': "foo.key"
 		#,'engine.autoreload.on' : False
 })
 
@@ -59,10 +66,11 @@ class RepeatedTimer(object):
 
 @cherrypy.popargs('transition')
 class Main(object):
-	def __init__(self, length, pin,channel, begin_synced = False):
-		self.strip = Adafruit_NeoPixel(length, pin, 800000, 10, False, 255,channel)
-		self.strip.begin()
-		#self.strip.setPixelColorRGB(length-1,0,1,0)
+	def __init__(self, strip, length, offset = 0, begin_synced = False):
+		self.strip = strip
+		self.numPixels = length
+		self.o = offset
+		#self.strip.setPixelColorRGB(self.o+length-1,0,1,0)
 		#self.strip.show()
 
 		def stuff(): # Setup the animation timer. It needs some function
@@ -122,13 +130,13 @@ class Main(object):
 		self.animate.stop()
 
 		# Make sure there is data for each pixel
-		while len(data) < self.strip.numPixels():
+		while len(data) < self.numPixels:
 			data += data
-		data[:self.strip.numPixels()]
+		data[:self.numPixels]
 
 		if transition == 'take':
-			for i in range(self.strip.numPixels()):
-				self.strip.setPixelColor(i,int(data[i],16))
+			for i in range(self.numPixels):
+				self.strip.setPixelColor(self.o+i,int(data[i],16))
 			self.strip.show()
 		elif transition == 'dissolve':
 			thread = Thread(target = self.dissolve, args = (data, ))
@@ -146,7 +154,7 @@ class Main(object):
 	#Dissolve Function
 	def dissolve(self, color2,sleep_length=0.01):
 		color1 = []
-		for i in range(self.strip.numPixels()):
+		for i in range(self.numPixels):
 			# Get Current Color and pad with zeros - [-6:] = slice -6
 			color1.append(("000000" + str(format(self.strip.getPixelColor(i),'x')))[-6:])
 
@@ -162,23 +170,23 @@ class Main(object):
 				return val
 
 			# Set Color on Strip
-			for i in range(self.strip.numPixels()):
-				self.strip.setPixelColorRGB(i,sliceDiff(0,2,i),sliceDiff(2,4,i),sliceDiff(4,6,i))
+			for i in range(self.numPixels):
+				self.strip.setPixelColorRGB(self.o+i,sliceDiff(0,2,i),sliceDiff(2,4,i),sliceDiff(4,6,i))
 			self.strip.show()
 			sleep(sleep_length)
 
 	# Color Wipe Function
 	def wipe(self,data):
-		for i in range(self.strip.numPixels()):
-			self.strip.setPixelColor(i,int(data[i],16))
+		for i in range(self.numPixels):
+			self.strip.setPixelColor(self.o+i,int(data[i],16))
 			self.strip.show()
-			sleep(self.strip.numPixels()/7500*math.cos(i/(self.strip.numPixels()/6.28))+.015)
+			sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
 
 	# Single Color Mode, Update Function
 	@cherrypy.expose
 	def returnColor(self):
 		# Get Strip Color and format as Hex
-		result = str(format(self.strip.getPixelColor(0),'x'))
+		result = ("000000" + str(format(self.strip.getPixelColor(0),'x')))[-6:]
 		return result
 
 	# IA Mode, Update Function
@@ -217,45 +225,50 @@ class Main(object):
 			shift = (shift+1) if shift < len(pattern)-1 else 0 #Increment Counter
 
 			if t == 'allTake':
-				for i in range(self.strip.numPixels()):
-					self.strip.setPixelColor(i,int(pattern[shift],16))
+				for i in range(self.numPixels):
+					self.strip.setPixelColor(self.o+i,int(pattern[shift],16))
 				self.strip.show()
 			elif t == 'wipe':
 				myNum = shift # Make copy because of simultanous instances
 				# Wipe code
-				for i in range(self.strip.numPixels()):
-					self.strip.setPixelColor(i,int(pattern[myNum],16))
+				for i in range(self.numPixels):
+					self.strip.setPixelColor(self.o+i,int(pattern[myNum],16))
 					self.strip.show()
-					sleep(self.strip.numPixels()/7500*math.cos(i/(self.strip.numPixels()/6.28))+.015)
+					sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
 			elif t == 'take' or t == 'dissolve':
-				for x in range(self.strip.numPixels()):
+				for x in range(self.numPixels):
 					if x+shift < len(pattern):
-						self.strip.setPixelColor(x,pattern[x+shift])
+						self.strip.setPixelColor(self.o+x,pattern[x+shift])
 					else:
-						self.strip.setPixelColor(x,pattern[x+shift-len(pattern)])
+						self.strip.setPixelColor(self.o+x,pattern[x+shift-len(pattern)])
 				self.strip.show()
 			elif t == 'allDissolve':
-				for i in range(self.strip.numPixels()):
-					self.strip.setPixelColor(i,pattern[shift])
+				for i in range(self.numPixels):
+					self.strip.setPixelColor(self.o+i,pattern[shift])
 				self.strip.show()
 			elif t == 'fadeOut':
 				if shift >= stoplength:
 					self.animate.stop()
-				for i in range(self.strip.numPixels()):
-					self.strip.setPixelColor(i,pattern[shift])
-				self.strip.show()
+				myNum = shift # Make copy because of simultanous instances
+				# Wipe code
+				for i in range(self.numPixels):
+					self.strip.setPixelColor(self.o+i,pattern[myNum])
+					self.strip.show()
+					sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
 
 		if transition == 'take': # Clone pattern for take
 			for i in range(len(pattern)): # Convert to decimal
 				pattern[i] = int(pattern[i],16)
-			while len(pattern) < self.strip.numPixels(): # Duplicate for each pixel
+			while len(pattern) < self.numPixels: # Duplicate for each pixel
 				pattern += pattern
 		elif transition == 'dissolve' or transition == 'allDissolve'  or transition == 'fadeOut': # Compute Pattern for Dissolve
 			pattern.append(pattern[0]) # Add extra stop to fade back to beginning
 
 			if transition == 'dissolve':
-				stoplength = int(self.strip.numPixels()/(len(pattern)-2))
+				stoplength = int(self.numPixels/(len(pattern)-2))
 				interval = interval/25 # Speed up
+			elif transition == 'fadeOut':
+				stoplength = 256
 			else:
 				stoplength = int(interval/0.05)
 				interval = 0.05
@@ -271,15 +284,24 @@ class Main(object):
 				color2 = pattern[s+1]
 				for x in range(stoplength):
 					ComputedStrip.append((sliceDiff(color1,color2,0,2,x)<<16) + (sliceDiff(color1,color2,2,4,x)<<8) + sliceDiff(color1,color2,4,6,x))
+					try:
+						if format(ComputedStrip[-1],'x') == format(ComputedStrip[-2],'x'):
+							ComputedStrip.pop()
+					except:
+						pass
 			pattern = ComputedStrip
 			del ComputedStrip
 
+			if transition == 'fadeOut':
+				stoplength = len(pattern)/2
+				interval = interval*60/stoplength # Multiply minutes by seconds and divide length
+
 			prestrip = []
 			if transition == 'allDissolve' or transition == 'fadeOut':
-				for x in range(self.strip.numPixels()):
+				for x in range(self.numPixels):
 					prestrip.append(("000000" + str(format(pattern[0],'x')))[-6:])
 			else:
-				for x in range(self.strip.numPixels()):
+				for x in range(self.numPixels):
 					prestrip.append(("000000" + str(format(pattern[x],'x')))[-6:])
 			self.dissolve(prestrip) # Predissolve to avoid jump
 
@@ -316,7 +338,7 @@ class Main(object):
 			for i in range(6): # Loop through each row
 				for x in range(10): # Loop through each pixel in the row
 					# Change the number multplied by i in the wheel function to change the difference between rows
-					self.strip.setPixelColor(10*i+x, wheel((i*10+j) & 255))
+					self.strip.setPixelColor(self.o+10*i+x, wheel((i*10+j) & 255))
 			self.strip.show()
 			j = (j+1) if j < 255 else 0 #Increment Counter
 
@@ -464,8 +486,44 @@ class Main(object):
 			self.unsubscribe() # unsubscribe from engine activity
 
 if __name__ == '__main__':
-	cherrypy.tree.mount(Main(int(cfg['strip1']['length']),int(cfg['strip1']['gpio_pin']),int(cfg['strip1']['channel'])), '/', config) # Main Thread
+
+	strip1 = Adafruit_NeoPixel(int(cfg['strip1']['length']), int(cfg['strip1']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip1']['channel']))
+	strip1.begin()
+	if cfg.has_option('strip1','real_length'):
+		length = cfg['strip1']['real_length']
+	else:
+		length = cfg['strip1']['length']
+
+	cherrypy.tree.mount(Main(strip1, int(length)), '/', config) # Main Thread
 	sleep(1)
-	cherrypy.tree.mount(Main(int(cfg['strip2']['length']),int(cfg['strip2']['gpio_pin']),int(cfg['strip2']['channel']),True), '/aux1', config) # Secondary
+
+	strip2 = Adafruit_NeoPixel(int(cfg['strip2']['length']), int(cfg['strip2']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip2']['channel']))
+	strip2.begin()
+	if cfg.has_option('strip2','real_length'):
+		length = cfg['strip2']['real_length']
+	else:
+		length = cfg['strip2']['length']
+	cherrypy.tree.mount(Main(strip2, int(length)), '/aux1', config) # Secondary
+
+	cherrypy.tree.mount(Main(strip1, int(cfg['strip3']['length']), offset=int(cfg['strip1']['real_length'])), '/aux2', config) # Third
+
+
+	cherrypy.server.unsubscribe()
+
+	HTTPS_SERVER = cherrypy._cpserver.Server()
+	HTTPS_SERVER.socket_port = 443
+	HTTPS_SERVER._socket_host = '0.0.0.0'
+	HTTPS_SERVER.ssl_module = 'builtin'
+	HTTPS_SERVER.ssl_certificate = os.path.abspath(os.path.dirname(__file__))+'/srv.crt'
+	HTTPS_SERVER.ssl_private_key = os.path.abspath(os.path.dirname(__file__))+'/srv.key'
+	#HTTPS_SERVER.ssl_certificate_chain = '/home/ubuntu/gd_bundle.crt'
+	HTTPS_SERVER.subscribe()
+
+	HTTP_SERVER = cherrypy._cpserver.Server()
+	HTTP_SERVER.socket_port = 80
+	HTTP_SERVER._socket_host = "0.0.0.0"
+	HTTP_SERVER.subscribe()
+
 	cherrypy.engine.start()
+
 	cherrypy.engine.block()
