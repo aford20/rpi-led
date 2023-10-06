@@ -15,6 +15,7 @@ window.onload = function() {
 	pix = document.getElementsByClassName("pix");
 	activePix = 0
 	remove = false
+	strips_chks = document.getElementById('publishTo').getElementsByTagName("input")
 
 	// Add Pixel Event Handlers
 	for (var i = 0; i < pix.length; i++) {
@@ -83,11 +84,17 @@ window.onload = function() {
 		})
 		// Double click. Take single color whole strip live.
 		palette[i].ondblclick = function(event) {
+			// Read Strips to Publish to
+			var s = ""
+			for (var i = 0; i < strips_chks.length; i++) {
+				if (strips_chks[i].checked) {s +=i + ','} 
+			}
+
 			config = { // Set up Ajax Config
 					'type'        : 'POST',
 					'dataType'    : 'JSON',
 					'contentType' : 'application/json',
-					'data'        : JSON.stringify([event.currentTarget.getAttribute("hexCode")])
+					'data'        : JSON.stringify({'color':event.currentTarget.getAttribute("hexCode"), "strips":s.slice(0,-1)})
 					}
 			// Check for Autos
 			if (document.getElementById('autotake').checked == true) {
@@ -189,9 +196,15 @@ function updatePreview(delay) {
 function goLive(dis = false, wipe = false) {
 
     var colorHex = [];
-    // Reorder each pixel into GRB
+    // Multiply data by Master
     for (var x=0; x < pixelData.length ; x++) {
         colorHex[x] = xMaster(pixelData[x]);
+    }
+
+	// Read Strips to Publish to
+    var s = ""
+    for (var i = 0; i < strips_chks.length; i++) {
+        if (strips_chks[i].checked) {s +=i + ','} 
     }
 
     // Set up Ajax Config
@@ -205,14 +218,14 @@ function goLive(dis = false, wipe = false) {
     else if (wipe == true && parseInt(document.getElementById("speed").value) < 2) {config.url = 'staticLive?transition=wipe'}
     else if (parseInt(document.getElementById("speed").value) == 0) {config.url = 'staticLive?transition=take'}
     else {
-	colorHex.splice(0,0,speeds[document.getElementById("speed").value]);
+		colorHex.splice(0,0,speeds[document.getElementById("speed").value]);
         if (wipe == true) {config.url = 'pattern?transition=wipe'}
-	else if (dis == true && document.getElementById('single').checked) {config.url = 'pattern?transition=allDissolve'}
-	else if (dis == true) {config.url = 'pattern?transition=dissolve'}
-	else if (document.getElementById("speed").value != 0 && document.getElementById('single').checked) {config.url = 'pattern?transition=allTake'}
-	else {config.url = 'pattern?transition=take'}
+		else if (dis == true && document.getElementById('single').checked) {config.url = 'pattern?transition=allDissolve'}
+		else if (dis == true) {config.url = 'pattern?transition=dissolve'}
+		else if (document.getElementById("speed").value != 0 && document.getElementById('single').checked) {config.url = 'pattern?transition=allTake'}
+		else {config.url = 'pattern?transition=take'}
     }
-    config.data = JSON.stringify(colorHex)
+    config.data = JSON.stringify({'color': colorHex, "strips":s.slice(0,-1)})
     // Send Request
     jQuery.ajax(config);
 }
@@ -351,6 +364,7 @@ function drop(event,ui) {
             <input type="checkbox" id="single"></span>
 
     </div>
+	$%^strip_chks
     <a href="index.html" ><button style="border-color:#c24700;color:#c24700;"> Home </button></a>
 
 </div>

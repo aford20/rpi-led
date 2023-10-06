@@ -1,1 +1,10 @@
 *.conf
+bluetooth_constants.py
+srv.crt
+password.txt
+srv.key
+btScanner.py
+bt_rssi.py
+bluetooth_utils.py
+client_connect_disconnect.py
+btScanner.log

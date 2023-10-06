@@ -20,6 +20,7 @@ function loadElements() {
     preview = document.getElementById('preview');
     live = document.getElementById('live');
     pvColor = "000000";
+    strips_chks = document.getElementById('publishTo').getElementsByTagName("input")
 
     // Add compile function to RGB sliders
     for (var i = 0; i < slider.length; i++) {
@@ -50,12 +51,12 @@ function loadElements() {
 
     }
 
-		// Color preview tile
-		updatePreview('000000',false)
+    // Color preview tile
+    updatePreview('000000',false)
     // Get live strip color
     returnColor();
-		// Check Autodissolve
-		document.getElementById('autodissolve').checked = true;
+    // Check Autodissolve
+    document.getElementById('autodissolve').checked = true;
 };
 
 function returnColor() {
@@ -135,16 +136,24 @@ function updatePreview(colorHex,delay) {
 
 // Send request to server to show on strip
 function goLive(dis = false, wipe = false) {
+    
+    // Read Strips to Publish to
+    var s = ""
+    for (var i = 0; i < strips_chks.length; i++) {
+        if (strips_chks[i].checked) {s +=i + ','} 
+    }
+    
     // Set up Ajax Config
     config = {
         'type'        : 'POST',
         'dataType'    : 'JSON',
         'contentType' : 'application/json',
-        'data'        : JSON.stringify([preview.innerHTML])
+        'data'        : JSON.stringify({'color': preview.innerHTML, "strips":s.slice(0,-1)})
         }
+
     // Modify config
     if (document.getElementById('fade_out').value != 0) {
-        config.data = JSON.stringify([document.getElementById("fade_out").value,preview.innerHTML,'000000'])
+        config.data = JSON.stringify({'color':[document.getElementById("fade_out").value,preview.innerHTML,'000000'],"strips":s.slice(0,-1)})
         config.url = 'pattern?transition=fadeOut';
     } else if (dis == true ) {
         config.url = 'staticLive?transition=dissolve';
@@ -257,6 +266,7 @@ function autoupdate() {
             <input type="checkbox" id="autoupdate" onclick="autoupdate()" ></span>
     </div>
 		<input type="range" min="0" max="30" value="0" id="fade_out" class="slider2"><p>0</p>
+    $%^strip_chks
     <button onclick="LiveToPreview()" style="border-color:#a00000;color:#a00000">Live to Preview</button>
     <a href="IALeds.html" ><button style="border-color:#52a916;color:#52a916"> Individual Mode </button></a>
     <a href="index.html" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>

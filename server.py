@@ -14,10 +14,12 @@ import math
 import configparser
 cfg = configparser.ConfigParser()
 cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
+#---
+from string import Template
 
 cherrypy.config.update({
 		'server.socket_host' : '0.0.0.0',
-		#'server.socket_port' : 80,
+		'server.socket_port' : 80,
 
 		#'server.socket_port' : 433,
 		#'server.ssl_module': 'builtin',
@@ -66,288 +68,137 @@ class RepeatedTimer(object):
 
 @cherrypy.popargs('transition')
 class Main(object):
-	def __init__(self, strip, length, offset = 0, begin_synced = False):
-		self.strip = strip
-		self.numPixels = length
-		self.o = offset
-		#self.strip.setPixelColorRGB(self.o+length-1,0,1,0)
-		#self.strip.show()
+	def __init__(self):
 
-		def stuff(): # Setup the animation timer. It needs some function
-			pass # and the others in the class don't exist yet
-		self.animate = RepeatedTimer(100, stuff)
-		self.animate.stop()
+		self.led_strips = []
+		html_string = "<div id='publishTo'><h2>Publish to:</h2>"
+		def init_strips(section):
+			# Initialize Strips
+			s = list(map(int, cfg[section]['length'].split(",")))
+			l = Adafruit_NeoPixel(sum(s), int(cfg[section]['gpio_pin']), 800000, 10, False, 255,int(cfg[section]['channel']))
+			l.begin()
 
-		# Subscribe when begin synced
-		if begin_synced == True:
-			self.isSync('True')
-		self.subscribeShutdown() # Not sure why it has to be like this but things get wacky if it isn't
+			for x in range(len(s)):
+				# Create Object
+				self.led_strips.append(Strip(l, s[x], sum(s[0:x])))
+				#Build HTML String
+				nonlocal html_string 
+				html_string += '<span>' + cfg[section]['name'].split(",")[x] + '<input type="checkbox"></span>'
 
-	# Subscribe to engine activity so it can shutdown nicely
-	def subscribeShutdown(self):
-		self.turnOff(cherrypy.engine,self).subscribe()
+		init_strips("strip1")
 
+		if cfg.has_section("strip2"):
+			init_strips("strip2")
+
+		# Save HTML Checkboxes
+		self.strips_html = {"strip_chks":html_string}
+
+		# Turn off LEDS on shutdown
+		def engine_stop():
+			for x in self.led_strips:
+				print(x)
+				thread = Thread(target = x.dissolve, args = ('000000', ))
+				thread.start()
+				sleep(0.01)
+
+		# Register Shutdown Subscriber
+		cherrypy.engine.subscribe('stop', engine_stop)
+
+	# Serve LEDS Page
 	@cherrypy.expose
-	@cherrypy.popargs('state')
-	def isSync(self,state): # Set Sync State
-		if state == 'True':
-			cherrypy.engine.subscribe("sync", self.syncer)
-			self.isSynced = True
-		else:
-			cherrypy.engine.unsubscribe("sync", self.syncer)
-			self.isSynced = False
+	def Leds(self):
+		class subTemplate(Template):
+			delimiter = "$%^"
+		
+		f = open("Leds.html", "r")
+		html = subTemplate(f.read())
+		f.seek(0)
+		f.close()
+		
+		return html.safe_substitute(self.strips_html)
 
-	# Handle events to keep synced
-	def syncer(self,epoint,t,data=''):
-		if epoint == 'static':
-			self.staticLive(t,data,False)
-		elif epoint == 'pattern':
-			self.pattern(t,data,False)
-		elif epoint == 'rainbow':
-			self.rainbow(transition=t,sync=False)
-
+	# Serve Pattern Page
 	@cherrypy.expose
-	def syncState(self): # Get sync state
-		return str(self.isSynced)
+	def Pattern(self):
+		class subTemplate(Template):
+			delimiter = "$%^"
+		
+		f = open("pattern.html", "r")
+		html = subTemplate(f.read())
+		f.seek(0)
+		f.close()
+		
+		return html.safe_substitute(self.strips_html)
 
 	@cherrypy.expose
 	@cherrypy.tools.json_in()
-	def staticLive(self,transition,override='',sync=True):
-		if override == '':
+	def staticLive(self,transition,color='',strips = '0', sync=True):
+		if color == '':
 			try:
-				data = cherrypy.request.json
+				d = cherrypy.request.json
+				color = d['color']
+				strips = d['strips']
 			except:
-				data = ['110011']
-		else:
-			if type(override) == str:
-				data = [override]
-			else:
-				data = []
-				for a in range(len(override)):
-					data.append(override[a])
+				color = ['110011']
 
-		# Stop Pattern
-		self.animate.stop()
-
-		# Make sure there is data for each pixel
-		while len(data) < self.numPixels:
-			data += data
-		data[:self.numPixels]
+		# Split Strips apart and convert to integers
+		strips = list(map(int, strips.split(",")))
 
 		if transition == 'take':
-			for i in range(self.numPixels):
-				self.strip.setPixelColor(self.o+i,int(data[i],16))
-			self.strip.show()
+			for x in strips:
+				self.led_strips[x].take(color)
 		elif transition == 'dissolve':
-			thread = Thread(target = self.dissolve, args = (data, ))
-			thread.start()
+			for x in strips:
+				thread = Thread(target = self.led_strips[x].dissolve, args = (color, ))
+				thread.start()
 		elif transition == 'wipe':
-			thread = Thread(target = self.wipe, args = (data, ))
-			thread.start()
+			for x in strips:
+				thread = Thread(target = self.led_strips[x].wipe, args = (color, ))
+				thread.start()
 		else:
 			print("Unable to match function " + transition)
 
-		# Sync Message
-		if sync:
-			cherrypy.engine.publish('sync','static',transition,data)
-
-	#Dissolve Function
-	def dissolve(self, color2,sleep_length=0.01):
-		color1 = []
-		for i in range(self.numPixels):
-			# Get Current Color and pad with zeros - [-6:] = slice -6
-			color1.append(("000000" + str(format(self.strip.getPixelColor(i),'x')))[-6:])
-
-		# Set Changes
-		for j in range(51):
-
-			# Function to calculate value
-			def sliceDiff(start, stop, index):
-				# Calculate Before/After Difference for each GRB
-				val = int(color2[index][slice(start,stop)],16) - int(color1[index][slice(start,stop)],16)
-				# Add % of difference to color1
-				val = int(int(color1[index][slice(start,stop)],16) + val*(0.02*j))
-				return val
-
-			# Set Color on Strip
-			for i in range(self.numPixels):
-				self.strip.setPixelColorRGB(self.o+i,sliceDiff(0,2,i),sliceDiff(2,4,i),sliceDiff(4,6,i))
-			self.strip.show()
-			sleep(sleep_length)
-
-	# Color Wipe Function
-	def wipe(self,data):
-		for i in range(self.numPixels):
-			self.strip.setPixelColor(self.o+i,int(data[i],16))
-			self.strip.show()
-			sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
-
 	# Single Color Mode, Update Function
 	@cherrypy.expose
-	def returnColor(self):
-		# Get Strip Color and format as Hex
-		result = ("000000" + str(format(self.strip.getPixelColor(0),'x')))[-6:]
-		return result
+	def returnColor(self, strip=0):
+		return self.led_strips[0].getPixelColor(0)
 
 	# IA Mode, Update Function
 	@cherrypy.expose
-	def IAreturn(self):
-		live = ""
-		for i in range(60):
-			live += (("000000" + str(format(self.strip.getPixelColor(i),'x')))[-6:])
-		return live
+	def IAreturn(self,strip=0):
+		return self.led_strips[strip].getStripColor()
 
 	# Patterns
 	@cherrypy.expose
 	@cherrypy.tools.json_in()
-	def pattern(self,transition,override='',sync=True):
-		if override == '':
+	def pattern(self,transition,data='',strips = '0'):
+		if data == '':
 			try:
-				data = cherrypy.request.json
+				d = cherrypy.request.json
+				data = d['color']
+				strips = d['strips']
 			except:
 				data = ['110011,110000']
-		else:
-			if type(override) == str:
-				data = [override]
-			else:
-				data = []
-				for a in range(len(override)):
-					data.append(override[a])
+		elif type(data) == str:
+			data = data.split(",")
 
-		self.animate.stop()
-
+		# Split Strips apart and convert to integers
+		strips = list(map(int, strips.split(",")))
 		interval = float(data[0])
 		pattern = data[slice(1,len(data))]
-
-		shift = 0
-		def Animation(t): # Run the Animations
-			nonlocal shift
-			shift = (shift+1) if shift < len(pattern)-1 else 0 #Increment Counter
-
-			if t == 'allTake':
-				for i in range(self.numPixels):
-					self.strip.setPixelColor(self.o+i,int(pattern[shift],16))
-				self.strip.show()
-			elif t == 'wipe':
-				myNum = shift # Make copy because of simultanous instances
-				# Wipe code
-				for i in range(self.numPixels):
-					self.strip.setPixelColor(self.o+i,int(pattern[myNum],16))
-					self.strip.show()
-					sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
-			elif t == 'take' or t == 'dissolve':
-				for x in range(self.numPixels):
-					if x+shift < len(pattern):
-						self.strip.setPixelColor(self.o+x,pattern[x+shift])
-					else:
-						self.strip.setPixelColor(self.o+x,pattern[x+shift-len(pattern)])
-				self.strip.show()
-			elif t == 'allDissolve':
-				for i in range(self.numPixels):
-					self.strip.setPixelColor(self.o+i,pattern[shift])
-				self.strip.show()
-			elif t == 'fadeOut':
-				if shift >= stoplength:
-					self.animate.stop()
-				myNum = shift # Make copy because of simultanous instances
-				# Wipe code
-				for i in range(self.numPixels):
-					self.strip.setPixelColor(self.o+i,pattern[myNum])
-					self.strip.show()
-					sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
-
-		if transition == 'take': # Clone pattern for take
-			for i in range(len(pattern)): # Convert to decimal
-				pattern[i] = int(pattern[i],16)
-			while len(pattern) < self.numPixels: # Duplicate for each pixel
-				pattern += pattern
-		elif transition == 'dissolve' or transition == 'allDissolve'  or transition == 'fadeOut': # Compute Pattern for Dissolve
-			pattern.append(pattern[0]) # Add extra stop to fade back to beginning
-
-			if transition == 'dissolve':
-				stoplength = int(self.numPixels/(len(pattern)-2))
-				interval = interval/25 # Speed up
-			elif transition == 'fadeOut':
-				stoplength = 256
-			else:
-				stoplength = int(interval/0.05)
-				interval = 0.05
-
-			# Calculate colors between stops
-			def sliceDiff(color1,color2,start, stop, index):
-				val = int(color2[slice(start,stop)],16) - int(color1[slice(start,stop)],16) # Calculate Before/After Difference for each RGB
-				return int(int(color1[slice(start,stop)],16) + val*(1/stoplength*index)) # Add % of difference to color1
-
-			ComputedStrip = []
-			for s in range(len(pattern)-1): # Generate ComputedStrip
-				color1 = pattern[s]
-				color2 = pattern[s+1]
-				for x in range(stoplength):
-					ComputedStrip.append((sliceDiff(color1,color2,0,2,x)<<16) + (sliceDiff(color1,color2,2,4,x)<<8) + sliceDiff(color1,color2,4,6,x))
-					try:
-						if format(ComputedStrip[-1],'x') == format(ComputedStrip[-2],'x'):
-							ComputedStrip.pop()
-					except:
-						pass
-			pattern = ComputedStrip
-			del ComputedStrip
-
-			if transition == 'fadeOut':
-				stoplength = len(pattern)/2
-				interval = interval*60/stoplength # Multiply minutes by seconds and divide length
-
-			prestrip = []
-			if transition == 'allDissolve' or transition == 'fadeOut':
-				for x in range(self.numPixels):
-					prestrip.append(("000000" + str(format(pattern[0],'x')))[-6:])
-			else:
-				for x in range(self.numPixels):
-					prestrip.append(("000000" + str(format(pattern[x],'x')))[-6:])
-			self.dissolve(prestrip) # Predissolve to avoid jump
-
-		if interval != 0:
-			del self.animate
-			self.animate = RepeatedTimer(interval, Animation, transition)
-		thread = Thread(target = Animation, args = (transition, ))
-		thread.start()
-
-		# Sync Message
-		if sync:
-			cherrypy.engine.publish('sync','pattern',transition,data)
+		
+		for x in strips:
+			thread = Thread(target = self.led_strips[x].pattern, args = (pattern, interval, transition))
+			thread.start()
 
 	# Special Rainbow Endpoint
 	@cherrypy.expose
-	def rainbow(self,transition=0.1,sync=True):
-		print('here')
+	def rainbow(self,transition=0.1, strips='0'):
 		yield('Rainbow Fade Endpoint. Transition Time: ' + str(transition))
-		self.animate.stop()
-		def wheel(pos):
-			"""Generate rainbow colors across 0-255 positions."""
-			if pos < 85:
-				return Color(pos * 3, 255 - pos * 3, 0)
-			elif pos < 170:
-				pos -= 85
-				return Color(255 - pos * 3, 0, pos * 3)
-			else:
-				pos -= 170
-				return Color(0, pos * 3, 255 - pos * 3)
-
-		j = 0
-		def Fade():
-			nonlocal j
-			for i in range(6): # Loop through each row
-				for x in range(10): # Loop through each pixel in the row
-					# Change the number multplied by i in the wheel function to change the difference between rows
-					self.strip.setPixelColor(self.o+10*i+x, wheel((i*10+j) & 255))
-			self.strip.show()
-			j = (j+1) if j < 255 else 0 #Increment Counter
-
-		del self.animate
-		self.animate = RepeatedTimer(float(transition), Fade)
-		Fade()
-
-		if sync: # Sync Message
-			cherrypy.engine.publish('sync','rainbow',transition)
+		strips = list(map(int, strips.split(",")))
+		for x in strips:
+			thread = Thread(target = self.led_strips[x].rainbow, args = (transition,))
+			thread.start()
 
 	# Alarms
 	@cherrypy.expose
@@ -432,7 +283,7 @@ class Main(object):
 
 	# Shutdown server function
 	def ServerOff():
-		os.system('ifconfig wlan0 down')	# Shutdown Wifi
+		#os.system('ifconfig wlan0 down')	# Shutdown Wifi
 		cherrypy.engine.exit()
 
 	cherrypy.tools.ServerOff = cherrypy.Tool('on_end_request', ServerOff) # Hook function to tool. End request to allow return to send before wifi goes down.
@@ -441,7 +292,6 @@ class Main(object):
 	@cherrypy.expose
 	@cherrypy.tools.ServerOff() # Connect Endpoint to tool
 	def shutdown(self):
-		self.animate.stop()		# Stop Pattern
 		return
 
 	# Shutdown Raspberry Pi Endpoint
@@ -458,56 +308,213 @@ class Main(object):
 		else:
 			return "Incorrect Password"
 
+# LED Strip Object
+class Strip():
+	def __init__(self, strip, length, offset=0):
+		self.strip = strip
+		self.numPixels = length
+		self.offset = offset
 
-	# Class to catch engine exit and turn off things nicely
-	class turnOff(SimplePlugin):
-		def __init__(self, bus, main_class, sleep = 2):
-			SimplePlugin.__init__(self, bus)
-			self.outer = main_class
-		'''
-		def start(self):
-			self.bus.log('Starting Sync Listener')
-			self.bus.subscribe("sync", self.syncer)
+		def stuff(): # Setup the animation timer. It needs some function
+			pass # and the others in the class don't exist yet
+		self.animate = RepeatedTimer(100, stuff)
+		self.animate.stop()
 
-		def syncer(self,t,data):
-			self.bus.log('got sync stuff')
-			#print(t)
-			#print(data)
-			self.outer.staticLive(t,data,False)'''
+	def preprocess(self, color):
+		if type(color) == str:
+			c = [color]
+		else:
+			c = []
+			for a in range(len(color)):
+				c.append(color[a])
+		
+		# Make sure there is data for each pixel
+		while len(c) < self.numPixels:
+			c += c
+		c[:self.numPixels]
+		
+		self.animate.stop() # Stop Animations
 
-		def stop(self):
-			'''Called when the engine stops'''
-			self.outer.animate.stop() # Stop animations
+		return c
 
-		def exit(self):
-			'''Called when the engine exits'''
-			sleep(1) # wait for queued animations to complete/stop
-			self.outer.staticLive('dissolve',override='000000') # Clear on exit
-			self.unsubscribe() # unsubscribe from engine activity
+	def take(self, color):
+		c = self.preprocess(color)
+
+		for i in range(self.numPixels):
+			self.strip.setPixelColor(self.offset+i,int(c[i],16))
+		self.strip.show()
+
+	def dissolve(self, color, sleep_length=0.01):
+		color2 = self.preprocess(color)
+		color1 = []
+		for i in range(self.numPixels):
+			# Get Current Color and pad with zeros - [-6:] = slice -6
+			color1.append(("000000" + str(format(self.strip.getPixelColor(i),'x')))[-6:])
+
+		# Set Changes
+		for j in range(51):
+
+			# Function to calculate value
+			def sliceDiff(start, stop, index):
+				# Calculate Before/After Difference for each GRB
+				val = int(color2[index][slice(start,stop)],16) - int(color1[index][slice(start,stop)],16)
+				# Add % of difference to color1
+				val = int(int(color1[index][slice(start,stop)],16) + val*(0.02*j))
+				return val
+
+			# Set Color on Strip
+			for i in range(self.numPixels):
+				self.strip.setPixelColorRGB(self.offset+i,sliceDiff(0,2,i),sliceDiff(2,4,i),sliceDiff(4,6,i))
+			self.strip.show()
+			sleep(sleep_length)
+	
+	def wipe(self,color):
+		c = self.preprocess(color)
+		for i in range(self.numPixels):
+			self.strip.setPixelColor(self.offset+i,int(c[i],16))
+			self.strip.show()
+			sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
+
+	def getPixelColor(self, num):
+		# Get Strip Color and format as Hex
+		result = ("000000" + str(format(self.strip.getPixelColor(0),'x')))[-6:]
+		return result
+	
+	def getStripColor(self):
+		result = ""
+		for i in range(60):
+			result += (("000000" + str(format(self.strip.getPixelColor(i),'x')))[-6:])
+		return result
+
+	def pattern(self,pattern,interval,transition):
+		#self.preprocess(color)
+		
+		self.animate.stop()
+
+		shift = 0
+		def Animation(t): # Run the Animations
+			nonlocal shift
+			shift = (shift+1) if shift < len(pattern)-1 else 0 #Increment Counter
+
+			if t == 'allTake':
+				for i in range(self.numPixels):
+					self.strip.setPixelColor(self.offset+i,int(pattern[shift],16))
+				self.strip.show()
+			elif t == 'wipe':
+				myNum = shift # Make copy because of simultanous instances
+				# Wipe code
+				for i in range(self.numPixels):
+					self.strip.setPixelColor(self.offset+i,int(pattern[myNum],16))
+					self.strip.show()
+					sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
+			elif t == 'take' or t == 'dissolve':
+				for x in range(self.numPixels):
+					if x+shift < len(pattern):
+						self.strip.setPixelColor(self.offset+x,pattern[x+shift])
+					else:
+						self.strip.setPixelColor(self.offset+x,pattern[x+shift-len(pattern)])
+				self.strip.show()
+			elif t == 'allDissolve':
+				for i in range(self.numPixels):
+					self.strip.setPixelColor(self.offset+i,pattern[shift])
+				self.strip.show()
+			elif t == 'fadeOut':
+				if shift >= stoplength:
+					self.animate.stop()
+				myNum = shift # Make copy because of simultanous instances
+				# Wipe code
+				for i in range(self.numPixels):
+					self.strip.setPixelColor(self.offset+i,pattern[myNum])
+					self.strip.show()
+					sleep(self.numPixels/7500*math.cos(i/(self.numPixels/6.28))+.015)
+
+		if transition == 'take': # Clone pattern for take
+			for i in range(len(pattern)): # Convert to decimal
+				pattern[i] = int(pattern[i],16)
+			while len(pattern) < self.numPixels: # Duplicate for each pixel
+				pattern += pattern
+		elif transition == 'dissolve' or transition == 'allDissolve'  or transition == 'fadeOut': # Compute Pattern for Dissolve
+			pattern.append(pattern[0]) # Add extra stop to fade back to beginning
+
+			if transition == 'dissolve':
+				stoplength = int(self.numPixels/(len(pattern)-2))
+				interval = interval/25 # Speed up
+			elif transition == 'fadeOut':
+				stoplength = 256
+			else:
+				stoplength = int(interval/0.05)
+				interval = 0.05
+
+			# Calculate colors between stops
+			def sliceDiff(color1,color2,start, stop, index):
+				val = int(color2[slice(start,stop)],16) - int(color1[slice(start,stop)],16) # Calculate Before/After Difference for each RGB
+				return int(int(color1[slice(start,stop)],16) + val*(1/stoplength*index)) # Add % of difference to color1
+
+			ComputedStrip = []
+			for s in range(len(pattern)-1): # Generate ComputedStrip
+				color1 = pattern[s]
+				color2 = pattern[s+1]
+				for x in range(stoplength):
+					ComputedStrip.append((sliceDiff(color1,color2,0,2,x)<<16) + (sliceDiff(color1,color2,2,4,x)<<8) + sliceDiff(color1,color2,4,6,x))
+					try:
+						if format(ComputedStrip[-1],'x') == format(ComputedStrip[-2],'x'):
+							ComputedStrip.pop()
+					except:
+						pass
+			pattern = ComputedStrip
+			del ComputedStrip
+
+			if transition == 'fadeOut':
+				stoplength = len(pattern)/2
+				interval = interval*60/stoplength # Multiply minutes by seconds and divide length
+
+			prestrip = []
+			if transition == 'allDissolve' or transition == 'fadeOut':
+				for x in range(self.numPixels):
+					prestrip.append(("000000" + str(format(pattern[0],'x')))[-6:])
+			else:
+				for x in range(self.numPixels):
+					prestrip.append(("000000" + str(format(pattern[x],'x')))[-6:])
+			self.dissolve(prestrip) # Predissolve to avoid jump
+
+		if interval != 0:
+			del self.animate
+			self.animate = RepeatedTimer(interval, Animation, transition)
+		thread = Thread(target = Animation, args = (transition, ))
+		thread.start()
+
+	def rainbow(self, transition_duration):
+		self.animate.stop()
+		def wheel(pos):
+			"""Generate rainbow colors across 0-255 positions."""
+			if pos < 85:
+				return Color(pos * 3, 255 - pos * 3, 0)
+			elif pos < 170:
+				pos -= 85
+				return Color(255 - pos * 3, 0, pos * 3)
+			else:
+				pos -= 170
+				return Color(0, pos * 3, 255 - pos * 3)
+
+		j = 0
+		def Fade():
+			nonlocal j
+			for i in range(6): # Loop through each row
+				for x in range(10): # Loop through each pixel in the row
+					# Change the number multplied by i in the wheel function to change the difference between rows
+					self.strip.setPixelColor(self.offset+10*i+x, wheel((i*10+j) & 255))
+			self.strip.show()
+			j = (j+1) if j < 255 else 0 #Increment Counter
+
+		del self.animate
+		self.animate = RepeatedTimer(float(transition_duration), Fade)
+		Fade()
 
 if __name__ == '__main__':
 
-	strip1 = Adafruit_NeoPixel(int(cfg['strip1']['length']), int(cfg['strip1']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip1']['channel']))
-	strip1.begin()
-	if cfg.has_option('strip1','real_length'):
-		length = cfg['strip1']['real_length']
-	else:
-		length = cfg['strip1']['length']
-
-	cherrypy.tree.mount(Main(strip1, int(length)), '/', config) # Main Thread
+	cherrypy.tree.mount(Main(), '/', config) # Main Thread
 	sleep(1)
-
-	strip2 = Adafruit_NeoPixel(int(cfg['strip2']['length']), int(cfg['strip2']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip2']['channel']))
-	strip2.begin()
-	if cfg.has_option('strip2','real_length'):
-		length = cfg['strip2']['real_length']
-	else:
-		length = cfg['strip2']['length']
-	cherrypy.tree.mount(Main(strip2, int(length)), '/aux1', config) # Secondary
-
-	cherrypy.tree.mount(Main(strip1, int(cfg['strip3']['length']), offset=int(cfg['strip1']['real_length'])), '/aux2', config) # Third
-
-
+	
 	cherrypy.server.unsubscribe()
 
 	HTTPS_SERVER = cherrypy._cpserver.Server()
