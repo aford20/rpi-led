@@ -70,7 +70,7 @@ button {
 }
 
 .slider {
-    -webkit-appearance: none;
+    appearance: none;
     width: 90%;
     height: 30px;
     margin:20px 20px 0px 20px;
@@ -105,7 +105,7 @@ button {
 }
 
 #master, #speed, .slider2 {
-    -webkit-appearance: none;
+    appearance: none;
     width: 90%;
     height:20px;
     margin:5% 5% 0% 5%;
@@ -118,7 +118,6 @@ button {
 }
 
 #master::-webkit-slider-thumb, #speed::-webkit-slider-thumb, .slider2::-webkit-slider-thumb {
-    -webkit-appearance: none;
     appearance: none;
     width: 40px;
     height: 40px;
@@ -205,6 +204,10 @@ input:checked + .toggle:before {
     font-size:large;font-weight:300;
 }
 
+#publishTo {
+    display: flex; justify-content: space-evenly;
+}
+
 input[type='checkbox'] {
     -webkit-appearance: none;
     appearance: none;
@@ -256,6 +259,7 @@ input:focus, button:focus {
   margin: 0;
   text-decoration: none;
   color:var(--secondary);
+  font-size:1.2em
 }
 
 #palSwitch li:hover {cursor:pointer;}

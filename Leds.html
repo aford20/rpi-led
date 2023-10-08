@@ -254,7 +254,6 @@ function autoupdate() {
 
 <!-- Settings Drawer -->
 <div id="settings">
-    <input type="range" min="0" max="100" value="100" id="master"><p>100</p>
     <div id="chkOptions">
         <span> Auto-take:
             <input type="checkbox" id="autotake" onclick="autotake()"></span><!--
@@ -265,11 +264,13 @@ function autoupdate() {
         --><span> Refresh Continuously:
             <input type="checkbox" id="autoupdate" onclick="autoupdate()" ></span>
     </div>
-		<input type="range" min="0" max="30" value="0" id="fade_out" class="slider2"><p>0</p>
-    $%^strip_chks
+    <h2>Master:</h2>
+    <input type="range" min="0" max="100" value="100" id="master"><p>100</p>
+    <h2>Fade Out Timer:</h2>
+	<input type="range" min="0" max="30" value="0" id="fade_out" class="slider2"><p>0</p>
+    <h3>Publish to:</h3><div id='publishTo'>$%^strip_chks</div>
     <button onclick="LiveToPreview()" style="border-color:#a00000;color:#a00000">Live to Preview</button>
-    <a href="IALeds.html" ><button style="border-color:#52a916;color:#52a916"> Individual Mode </button></a>
-    <a href="index.html" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>
+    <a href="/" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>
 </div>
 </body>
 </html>

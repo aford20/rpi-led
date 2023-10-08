@@ -71,7 +71,7 @@ class Main(object):
 	def __init__(self):
 
 		self.led_strips = []
-		html_string = "<div id='publishTo'><h2>Publish to:</h2>"
+		html_string = ""
 		def init_strips(section):
 			# Initialize Strips
 			s = list(map(int, cfg[section]['length'].split(",")))
@@ -110,7 +110,7 @@ class Main(object):
 		class subTemplate(Template):
 			delimiter = "$%^"
 		
-		f = open("Leds.html", "r")
+		f = open(os.path.abspath(os.path.dirname(__file__))+"/Leds.html", "r")
 		html = subTemplate(f.read())
 		f.seek(0)
 		f.close()
@@ -123,7 +123,7 @@ class Main(object):
 		class subTemplate(Template):
 			delimiter = "$%^"
 		
-		f = open("pattern.html", "r")
+		f = open(os.path.abspath(os.path.dirname(__file__))+"/pattern.html", "r")
 		html = subTemplate(f.read())
 		f.seek(0)
 		f.close()
