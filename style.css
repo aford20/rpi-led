@@ -208,6 +208,29 @@ input:checked + .toggle:before {
     display: flex; justify-content: space-evenly;
 }
 
+#publishTo label {
+    position: relative;
+    min-width: 20vw;
+    display: inline-block;
+    padding:10px 10px; text-align: center;
+    font-size: 1em;
+}
+
+#publishTo input[type='checkbox'] {
+    position: absolute;
+    top: 0%;
+    left: 0;
+    width: 100%; height:100%;
+    padding: 0px; margin: 0px;
+    border-radius: 3em;z-index:-1;
+    background: none; border:2px solid var(--disabled);
+}
+
+#publishTo input[type='checkbox']:checked  { border-color: var(--accent1);}
+#publishTo input[type='checkbox']:hover { border-color: var(--accent2);}
+#publishTo label:has(> input[type='checkbox']:checked) {color: var(--accent1)}
+#publishTo label:has(> input[type='checkbox']:hover) {color: var(--accent2);}
+
 input[type='checkbox'] {
     -webkit-appearance: none;
     appearance: none;
