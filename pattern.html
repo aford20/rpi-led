@@ -349,9 +349,14 @@ function drop(event,ui) {
 
 <!-- Settings Drawer -->
 <div id="settings">
-	<span>Speed</span>
+    <h2>Publish to:</h2>
+    <div id="publishTo">
+    <!--<label><input type="checkbox">Above</label> <label><input type="checkbox">Below</label> <label><input type="checkbox">Box</label>
+    -->$%^strip_chks
+    </div>
+	<h2>Speed:</h2>
 	<input type="range" min="0" max="14" value="0" step="1" id="speed"><p>0</p>
-	<span>Master</span>
+	<h2>Master:</h2>
     <input type="range" min="0" max="100" value="100" id="master"><p>100</p>
 	<div id="chkOptions">
 		<span> Auto-take:
@@ -364,7 +369,6 @@ function drop(event,ui) {
             <input type="checkbox" id="single"></span>
 
     </div>
-	$%^strip_chks
     <a href="index.html" ><button style="border-color:#c24700;color:#c24700;"> Home </button></a>
 
 </div>

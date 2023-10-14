@@ -83,7 +83,7 @@ class Main(object):
 				self.led_strips.append(Strip(l, s[x], sum(s[0:x])))
 				#Build HTML String
 				nonlocal html_string 
-				html_string += '<span>' + cfg[section]['name'].split(",")[x] + '<input type="checkbox"></span>'
+				html_string += '<label><input type="checkbox">' + cfg[section]['name'].split(",")[x] + '</label>'
 
 		init_strips("strip1")
 
@@ -96,7 +96,6 @@ class Main(object):
 		# Turn off LEDS on shutdown
 		def engine_stop():
 			for x in self.led_strips:
-				print(x)
 				thread = Thread(target = x.dissolve, args = ('000000', ))
 				thread.start()
 				sleep(0.01)
@@ -132,7 +131,7 @@ class Main(object):
 
 	@cherrypy.expose
 	@cherrypy.tools.json_in()
-	def staticLive(self,transition,color='',strips = '0', sync=True):
+	def staticLive(self,transition,color='',strips = '0'):
 		if color == '':
 			try:
 				d = cherrypy.request.json
@@ -161,12 +160,12 @@ class Main(object):
 	# Single Color Mode, Update Function
 	@cherrypy.expose
 	def returnColor(self, strip=0):
-		return self.led_strips[0].getPixelColor(0)
+		return self.led_strips[int(strip)].getPixelColor(0)
 
 	# IA Mode, Update Function
 	@cherrypy.expose
 	def IAreturn(self,strip=0):
-		return self.led_strips[strip].getStripColor()
+		return self.led_strips[int(strip)].getStripColor()
 
 	# Patterns
 	@cherrypy.expose
@@ -216,7 +215,6 @@ class Main(object):
 	def RemoveAlarm(self):
 		# Get Data
 		data = cherrypy.request.json
-		print(data)
 
 		# Setup Cron
 		cron = CronTab(user='root')
@@ -234,7 +232,6 @@ class Main(object):
 	def SaveAlarm(self):
 		# Get Data
 		data = cherrypy.request.json
-		print(data)
 		# Setup Cron
 		cron = CronTab(user='root')
 
@@ -377,7 +374,7 @@ class Strip():
 
 	def getPixelColor(self, num):
 		# Get Strip Color and format as Hex
-		result = ("000000" + str(format(self.strip.getPixelColor(0),'x')))[-6:]
+		result = ("000000" + str(format(self.strip.getPixelColor(self.offset+0),'x')))[-6:]
 		return result
 	
 	def getStripColor(self):

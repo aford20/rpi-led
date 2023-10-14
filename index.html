@@ -9,6 +9,12 @@
     <link rel="manifest" href="/manifest.json">
 <script src="scripts/jquery.min.js"></script>
 <script>
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+	navigator.serviceWorker.register("sw.js");
+ }
+
 function shutdown() {
     jQuery.ajax({
         'type'        : 'POST',
