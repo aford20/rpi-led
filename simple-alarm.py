@@ -50,15 +50,9 @@ import configparser
 cfg = configparser.ConfigParser()
 cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
 
-# Use real length of strip if a second strip is virtually on same pin
-if cfg.has_option('strip1','real_length'):
-    length = cfg['strip1']['real_length']
-else:
-    length = cfg['strip1']['length']
-
 # Setup Light Strip
 from rpi_ws281x import *
-strip = Adafruit_NeoPixel(int(length), int(cfg['strip1']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip1']['channel']))
+strip = Adafruit_NeoPixel(int(cfg['strip1']['length'].split(",")[0]), int(cfg['strip1']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip1']['channel']))
 strip.begin()
 
 # Increase Brightness. Random LED. 1 Color.
