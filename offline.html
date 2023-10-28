@@ -14,24 +14,21 @@ body {margin:0px;background-color:#202020; transition: opacity 2s;}
 	width:100%;background-color:#6bb55b;text-align:center;
 	border-bottom:5px #e89700 solid;height:70px;
 }
-
-.hrSec {
-    height:5px;
-    background-color:#6bb55b; border: none; position: relative;
-    top: 60px; width: 80%; margin: 0% 10%;
-}
-
 .sec {
 	text-align:center; font-size:34px; color: #dddddd;
     position: relative; line-height: 1.7; overflow: hidden;
 }
-.sec span { background-color: #202020; padding: 0 15px;}
 </style>
 </head>
 <body>
+<script>
+function retry() {
+    window.location.reload()
+}
+</script>
 <div id='header'><img src='logos/logo_162.png' height='70px'></div>
 <br />
-<hr class='hrSec' style='top:40px; margin-bottom:40px;'>
-<h2>Unable to connect. Are you on the same network?</h2>
+<h2 class="sec">Unable to connect. Are you on the same network?</h2>
+<button style="display:block;margin:auto;padding:10px;" onclick="retry()">Retry</button>
 </body>
 </html>
