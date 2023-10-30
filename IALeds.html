@@ -46,8 +46,6 @@ function loadElements() {
             buildStrip(index)
         }
     })}
-
-    returnColor(); // Get Live Configuration
 }
 
 function buildStrip(index) {
@@ -199,7 +197,7 @@ function goLive(dis = false, wipe = false) {
     if (index != -1) { // One strip is checked 
         let colorHex = [];
 
-        // Reorder each pixel into GRB
+        // Multiply by Master
         for (let x=0; x < pixelData.length ; x++) {
             colorHex[x] = xMaster(pixelData[x]);
         }
@@ -209,19 +207,17 @@ function goLive(dis = false, wipe = false) {
             'type'        : 'POST',
             'dataType'    : 'JSON',
             'contentType' : 'application/json',
-            'data'        : JSON.stringify({'color': colorHex, "strips":index})
+            'data'        : JSON.stringify({'color': colorHex, "strips":index}),
+            'success': (result) => {
+                liveData = result;
+                const live = document.getElementById('live').children
+                // Loop and update background color
+                for (let x=0; x < liveData.length ; x++) {live[x].style.backgroundColor = "#" + liveData[x]}}
             }
         // Modify config
-        if (dis == true ) {
-            config.url = 'staticLive?transition=dissolve';
-            config.success = setTimeout(returnColor, 1000);
-        } else if (wipe == true) {
-            config.url = 'staticLive?transition=wipe';
-            config.success = setTimeout(returnColor, 1000);
-        } else {
-            config.url = 'staticLive?transition=take';
-            config.success = setTimeout(returnColor, 200);
-        }
+        if (dis == true ) {config.url = 'staticLive?transition=dissolve'} 
+        else if (wipe == true) { config.url = 'staticLive?transition=wipe'} 
+        else { config.url = 'staticLive?transition=take'}
         // Send Request
         jQuery.ajax(config);
         // stop link reloading the page

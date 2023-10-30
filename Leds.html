@@ -62,29 +62,29 @@ function loadElements() {
     document.getElementById('autodissolve').checked = true;
 };
 
+function displayLiveColor(color) {
+    // Pad extra zeros
+    color = ("00000" + color).slice(-6);
+    live.style.backgroundColor = "#" + color;
+
+    // Display color code
+    live.innerHTML = color;
+
+    // Flip text color for visibility
+    if (color.slice(0,1) <= 8 && color.slice(2,3) <= 8 && color.slice(4,5) <= 8 ) {
+        live.style.color = "white";
+    }
+    else {
+        live.style.color = "black";
+    }
+
+}
+
 function returnColor() {
     // Get first checked strip
     const index = Array.prototype.findIndex.call(strips_chks,x => x.checked == true)
     if (index != -1) { // At least one strip is checked
-        // ajax request
-        $.get("returnColor?strip="+index, function(liveHex){
-            // Pad extra zeros
-            liveHex = ("00000" + liveHex).slice(-6);
-            live.style.backgroundColor = "#" + liveHex;
-
-            // Display color code
-            live.innerHTML = liveHex;
-
-            // Flip text color for visibility
-            if (liveHex.slice(0,1) <= 8 && liveHex.slice(2,3) <= 8 && liveHex.slice(4,5) <= 8 ) {
-                live.style.color = "white";
-            }
-            else {
-                live.style.color = "black";
-            }
-        });
-        // stop link reloading the page
-        //event.preventDefault();
+        $.get("returnColor?strip="+index, (result) => displayLiveColor(result));
     }
 }
 
@@ -155,8 +155,9 @@ function goLive(dis = false, wipe = false) {
             'type'        : 'POST',
             'dataType'    : 'JSON',
             'contentType' : 'application/json',
-            'data'        : JSON.stringify({'color': preview.innerHTML, "strips":s.slice(0,-1)})
-            }
+            'data'        : JSON.stringify({'color': preview.innerHTML, "strips":s.slice(0,-1)}),
+            'success' : (result) => displayLiveColor(result)             
+        }
 
         // Modify config
         if (document.getElementById('fade_out').value != 0) {
@@ -164,13 +165,10 @@ function goLive(dis = false, wipe = false) {
             config.url = 'pattern?transition=fadeOut';
         } else if (dis == true ) {
             config.url = 'staticLive?transition=dissolve';
-            config.success = setTimeout(returnColor, 1000);
         } else if (wipe == true) {
             config.url = 'staticLive?transition=wipe';
-            config.success = setTimeout(returnColor, 1000);
         } else {
             config.url = 'staticLive?transition=take';
-            config.success = setTimeout(returnColor, 200);
         }
         // Send Request
         jQuery.ajax(config);

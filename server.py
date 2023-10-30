@@ -16,6 +16,7 @@ cfg = configparser.ConfigParser()
 cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
 #---
 from string import Template
+from urllib.parse import urlparse
 
 cherrypy.config.update({
 		'server.socket_host' : '0.0.0.0',
@@ -103,26 +104,15 @@ class Main(object):
 		# Register Shutdown Subscriber
 		cherrypy.engine.subscribe('stop', engine_stop)
 
-	# Serve LEDS Page
-	@cherrypy.expose
-	def Leds(self):
-		class subTemplate(Template):
-			delimiter = "$%^"
-		
-		f = open(os.path.abspath(os.path.dirname(__file__))+"/Leds.html", "r")
-		html = subTemplate(f.read())
-		f.seek(0)
-		f.close()
-		
-		return html.safe_substitute(self.strips_html)
+	# Serve Static Pages
+	@cherrypy.expose(['Leds', 'Pattern','IALeds'])
+	def staticHTML(self):
+		path = cherrypy.request.path_info
 
-	# Serve Pattern Page
-	@cherrypy.expose
-	def Pattern(self):
 		class subTemplate(Template):
 			delimiter = "$%^"
 		
-		f = open(os.path.abspath(os.path.dirname(__file__))+"/pattern.html", "r")
+		f = open(os.path.abspath(os.path.dirname(__file__))+path + ".html", "r")
 		html = subTemplate(f.read())
 		f.seek(0)
 		f.close()
@@ -131,12 +121,13 @@ class Main(object):
 
 	@cherrypy.expose
 	@cherrypy.tools.json_in()
+	@cherrypy.tools.json_out()
 	def staticLive(self,transition,color='',strips = '0'):
 		if color == '':
 			try:
 				d = cherrypy.request.json
 				color = d['color']
-				strips = d['strips']
+				strips = str(d['strips'])
 			except:
 				color = ['110011']
 
@@ -147,15 +138,25 @@ class Main(object):
 			for x in strips:
 				self.led_strips[x].take(color)
 		elif transition == 'dissolve':
+			threads = {}
 			for x in strips:
-				thread = Thread(target = self.led_strips[x].dissolve, args = (color, ))
-				thread.start()
+				threads[x] = Thread(target = self.led_strips[x].dissolve, args = (color, ))
+				threads[x].start()
 		elif transition == 'wipe':
+			threads = {}
 			for x in strips:
-				thread = Thread(target = self.led_strips[x].wipe, args = (color, ))
-				thread.start()
+				threads[x] = Thread(target = self.led_strips[x].wipe, args = (color, ))
+				threads[x].start()
 		else:
 			print("Unable to match function " + transition)
+		
+		try:
+			threads[strips[0]].join() # Wait for first strip to finish
+		finally:
+			if isinstance(color,list):
+				return self.led_strips[strips[0]].getStripColor()
+			elif isinstance(color, str):
+				return self.led_strips[strips[0]].getPixelColor(0)
 
 	# Single Color Mode, Update Function
 	@cherrypy.expose
@@ -164,6 +165,7 @@ class Main(object):
 
 	# IA Mode, Update Function
 	@cherrypy.expose
+	@cherrypy.tools.json_out()
 	def IAreturn(self,strip=0):
 		return self.led_strips[int(strip)].getStripColor()
 
@@ -378,9 +380,9 @@ class Strip():
 		return result
 	
 	def getStripColor(self):
-		result = ""
-		for i in range(60):
-			result += (("000000" + str(format(self.strip.getPixelColor(i),'x')))[-6:])
+		result = []
+		for i in range(self.numPixels):
+			result.append(("000000" + str(format(self.strip.getPixelColor(i),'x')))[-6:])
 		return result
 
 	def pattern(self,pattern,interval,transition):
