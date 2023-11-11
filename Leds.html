@@ -8,10 +8,6 @@
 <script src="scripts/script.js"></script>
 <script type="text/javascript">
 
-// Testing only to load page
-//window.onkeypress = function(){loadElements()};
-
-// Load Page
 window.onload = function(){loadElements();};
 
 function loadElements() {
@@ -21,6 +17,7 @@ function loadElements() {
     live = document.getElementById('live');
     pvColor = "000000";
     strips_chks = document.getElementById('publishTo').getElementsByTagName("input")
+    strips_chks[0].checked = true
 
     // Add compile function to RGB sliders
     for (var i = 0; i < slider.length; i++) {

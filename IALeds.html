@@ -19,8 +19,8 @@ function loadElements() {
     buildStrip(0)
 
     // Add compile function to each slider
-    for (let i = 0; i < slider.length; i++) {
-        slider[i].oninput = function(event) {
+    for (let a of slider) {
+        a.oninput = function(event) {
             event.currentTarget.nextSibling.innerHTML = event.currentTarget.value; // Show slider Value
             clearTimeout(DissolveTimer);     // Reset Dissolve Timer
             updatePreview(compileColor(), true); // Update Preview and Compiler to convert RGB to Hex
@@ -34,16 +34,11 @@ function loadElements() {
         updatePreview(pixelData[activeIndex[0]],true);
     }
 
-    // Add on Change to Publish to options
+    // On Change to Publish options
     for (let b of strips_chks) {b.addEventListener("change", function(event) {
-        // I'm sure there's a better way to uncheck the other ones
         if (event.currentTarget.checked) {
-            for (let m of strips_chks) {
-                if (m != event.currentTarget ) {m.checked = false}
-            }
-
-            const index = Array.prototype.findIndex.call(strips_chks,x => x.checked == true)
-            buildStrip(index)
+            for (let m of strips_chks) {if (m != event.currentTarget) {m.checked = false}} // Uncheck others
+            buildStrip(Array.prototype.findIndex.call(strips_chks,x => x.checked == true)) // Get Index and build new strip
         }
     })}
 }
@@ -250,6 +245,7 @@ function selector(event) {
 
     // Highlight new pixel
     preview[event.currentTarget.value].style.backgroundColor = "#ffff00";
+    preview[activeIndex].scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
     setSliders(pixelData[activeIndex[0]]) // Update RGB Sliders
 }
 
@@ -273,7 +269,7 @@ function LiveToPreview() {
     document.getElementById("master").value = 100;
     const preview = document.getElementById('preview').children
 
-    for (let i=0; i< 60; i++) {
+    for (let i=0; i< liveData.length; i++) {
         pixelData[i] = liveData[i] // Copy live to Preview
         preview[i].style.backgroundColor = '#' + xMaster(pixelData[i],true) // Set color of each pixel.
     }
@@ -323,18 +319,34 @@ function drop(event) {
 }
 </script>
 <style>
+#stripCont {
+    min-width: 100%;
+    overflow-x: auto;
+}
 
-div {
-    display:inline-block;
+/* width */
+#stripCont::-webkit-scrollbar {
+  height: 10px; opacity:0.5;
+}
+
+/* Track */
+#stripCont::-webkit-scrollbar-track {
+  background:var(--accent2);
+}
+
+/* Handle */
+#stripCont::-webkit-scrollbar-thumb {
+  background:var(--accent1);
+  border-radius:5px;
 }
 
 #live, #preview {
-    width:100%;
-    display:flex;justify-content: space-around;
+    min-width:100%; width: fit-content;margin:5px 0px;
+    display:flex;justify-content: space-around; gap:2px
 }
 
 #live div, #preview div {
-    height:10vh;
+    min-width:15px; aspect-ratio: 1/1;
     background-color:#000
 }
 
@@ -381,8 +393,10 @@ div {
 </style>
 </head>
 <body>
+<div id="stripCont">
 <div id="live"></div>
 <div id="preview"></div>
+</div>
 
 <input type="range" min="0" max="59" value="0" id="selector" oninput="selector(event)">
 <br />
@@ -444,7 +458,7 @@ div {
     <!--$%^strip_chks-->
     </div>
     <button onclick="LiveToPreview()" style="border-color:#a00000;color:#a00000">Live to Preview</button>
-    <a href="Leds.html" ><button style="border-color:#1652a9;color:#1652a9;"> Whole Strip Mode </button></a>
+    <a href="Leds" ><button style="border-color:#1652a9;color:#1652a9;"> Whole Strip Mode </button></a>
     <a href="index.html" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>
 </div>
 
