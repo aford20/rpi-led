@@ -2,13 +2,8 @@
 import cherrypy
 from cherrypy.process.plugins import SimplePlugin
 import os.path
-# ---
-from rpi_ws281x import *
 from time import sleep
-# ---
-from crontab import CronTab
 import re
-# ---
 import math
 #---
 import configparser
@@ -16,19 +11,10 @@ cfg = configparser.ConfigParser()
 cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
 #---
 from string import Template
-from urllib.parse import urlparse
 
 cherrypy.config.update({
 		'server.socket_host' : '0.0.0.0',
-		'server.socket_port' : 80,
-
-		#'server.socket_port' : 433,
-		#'server.ssl_module': 'builtin',
-		#'server.ssl_certificate': os.path.abspath(os.path.dirname(__file__))+'/srv.crt',
-		#'server.ssl_private_key' : os.path.abspath(os.path.dirname(__file__))+'/srv.key'
-		#'server.ssl_certificate': "foo.crt",
-		#'server.ssl_private_key': "foo.key"
-		#,'engine.autoreload.on' : False
+		'server.socket_port' : 80
 })
 
 config = {
@@ -76,7 +62,7 @@ class Main(object):
 		def init_strips(section):
 			# Initialize Strips
 			s = list(map(int, cfg[section]['length'].split(",")))
-			l = Adafruit_NeoPixel(sum(s), int(cfg[section]['gpio_pin']), 800000, 10, False, 255,int(cfg[section]['channel']))
+			l = PixelStrip(sum(s), int(cfg[section]['gpio_pin']), 800000, 10, False, 255,int(cfg[section]['channel']))
 			l.begin()
 
 			for x in range(len(s)):
@@ -509,27 +495,33 @@ class Strip():
 		self.animate = RepeatedTimer(float(transition_duration), Fade)
 		Fade()
 
-if __name__ == '__main__':
+def beginServer(): 
+	''' Start Server Normally'''
+	global PixelStrip, CronTab
+	from rpi_ws281x import PixelStrip
+	from crontab import CronTab
 
-	cherrypy.tree.mount(Main(), '/', config) # Main Thread
-	sleep(1)
+def beginDummy():
+	''' Start Server with emulated LEDs and without Cron '''
+	global PixelStrip
+	from dummyLeds import PixelStrip
+	startup()
+
+def startup():
+	cherrypy.tree.mount(Main(), '/', config)
 	
-	cherrypy.server.unsubscribe()
-
-	HTTPS_SERVER = cherrypy._cpserver.Server()
-	HTTPS_SERVER.socket_port = 443
-	HTTPS_SERVER._socket_host = '0.0.0.0'
-	HTTPS_SERVER.ssl_module = 'builtin'
-	HTTPS_SERVER.ssl_certificate = os.path.abspath(os.path.dirname(__file__))+'/srv.crt'
-	HTTPS_SERVER.ssl_private_key = os.path.abspath(os.path.dirname(__file__))+'/srv.key'
-	#HTTPS_SERVER.ssl_certificate_chain = '/home/ubuntu/gd_bundle.crt'
-	HTTPS_SERVER.subscribe()
-
-	HTTP_SERVER = cherrypy._cpserver.Server()
-	HTTP_SERVER.socket_port = 80
-	HTTP_SERVER._socket_host = "0.0.0.0"
-	HTTP_SERVER.subscribe()
+	if cfg.has_section("https"):
+		HTTPS_SERVER = cherrypy._cpserver.Server()
+		HTTPS_SERVER.socket_port = 443
+		HTTPS_SERVER._socket_host = '0.0.0.0'
+		HTTPS_SERVER.ssl_module = 'builtin'
+		HTTPS_SERVER.ssl_certificate = cfg["https"]["certificate_path"]
+		HTTPS_SERVER.ssl_private_key = cfg["https"]["key_path"]
+		HTTPS_SERVER.subscribe()
 
 	cherrypy.engine.start()
-
 	cherrypy.engine.block()
+
+
+if __name__ == '__main__':
+	beginServer()
