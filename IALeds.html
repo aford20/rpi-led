@@ -7,115 +7,130 @@
 <script src="scripts/jquery.min.js"></script>
 <script src="scripts/script.js"></script>
 <script type="text/javascript">
+"use strict"
+let pixelData = [], liveData, strips_chks, activeIndex = [0]
 
-window.onload = function() {loadElements();}
+window.onload = () => loadElements();
 
 function loadElements() {
+    strips_chks = document.getElementById('publishTo').getElementsByTagName("input")
 
-    // Create pixelData array and prefill with zeros
-    pixelData = [];
-    for (var x=0; x < 60 ; x++) {
-        pixelData[x] = "000000";
-    }
-
-    // Global Vars for Preview strip
-    td = document.getElementById('preview').children;
-    activeIndex = [0];
-
-    liveData = [0];
-
-    // Loop through each td to setup preview strip
-    for (var i = 0; i < 60; i++) {
-
-        td[i].style.backgroundColor = "#000000";
-
-        // Set up drag properties
-        td[i].ondrop = function() {drop(event);};
-        td[i].ondragover = function() {allowDrop(event);};
-
-        // Add onclick Event
-        td[i].onclick = function(event) {
-
-            var me = event.currentTarget;
-
-            // Highlight current pixel
-            me.style.backgroundColor= "#ffff00";
-
-            // Calculate Index Value
-            for (var i=0; (me=me.previousSibling); i++);
-
-            // Check for special actions
-            if (event.ctrlKey) { // Ctrl Key
-                //Add value to beginning of activeIndex
-                activeIndex.unshift(i-1);
-
-            } else if (event.shiftKey) { // Shift Key
-
-                // Caclulate difference between start and stop
-                var diff = i-1 - activeIndex[0];
-                // Loop over each pixel - abs eliminates negative runs
-                for (var x=0; x < Math.abs(diff) ;x++) {
-                    // Determine direction and add value to beginning of active index
-                    if(Math.abs(diff) == diff) { // work left to right
-                        activeIndex.unshift(activeIndex[0]+1);
-                    } else { // work right to left
-                        activeIndex.unshift(activeIndex[0]-1);
-                    }
-                    // Highlight selected
-                    td[activeIndex[0]].style.backgroundColor = "#ffff00";
-                }
-
-            } else { // No keys
-
-                // Loop through active index to find and Un-Highlight last pixels
-                for (var x=0; x < activeIndex.length ;x++) {
-                    td[activeIndex[x]].style.backgroundColor = "#" + xMaster(pixelData[activeIndex[x]],true);
-                }
-                // Clear activeIndex
-                activeIndex = []
-                // Fill with Current Index
-                activeIndex[0] = i-1;
-
-                setSliders(pixelData[i-1]) // Update RGB Sliders
-            }
-
-
-            // Move Selector to current pixel
-            document.getElementById('selector').value = activeIndex[0];
-        }
-    };
+    strips_chks[0].checked = true
+    buildStrip(0)
 
     // Add compile function to each slider
-    for (var i = 0; i < slider.length; i++) {
-        slider[i].oninput = function(event) {
-            // Show slider Value
-            event.currentTarget.nextSibling.innerHTML = event.currentTarget.value;
-            // Reset Dissolve Timer
-            clearTimeout(DissolveTimer);
-            // Update Preview and Compiler to convert RGB to Hex
-            // 2 argument delays dissolve function
-            updatePreview(compileColor(), true);
+    for (let a of slider) {
+        a.oninput = function(event) {
+            event.currentTarget.nextSibling.innerHTML = event.currentTarget.value; // Show slider Value
+            clearTimeout(DissolveTimer);     // Reset Dissolve Timer
+            updatePreview(compileColor(), true); // Update Preview and Compiler to convert RGB to Hex
         }
     }
 
     // On input function for master brightness
     document.getElementById("master").oninput = function(event) {
-        // Show Value
-        event.currentTarget.nextSibling.innerHTML = event.currentTarget.value;
+        event.currentTarget.nextSibling.innerHTML = event.currentTarget.value; // Show Value
         clearTimeout(DissolveTimer);
         updatePreview(pixelData[activeIndex[0]],true);
     }
 
-    // Get Live Configuration
-    returnColor();
+    // On Change to Publish options
+    for (let b of strips_chks) {b.addEventListener("change", function(event) {
+        if (event.currentTarget.checked) {
+            for (let m of strips_chks) {if (m != event.currentTarget) {m.checked = false}} // Uncheck others
+            buildStrip(Array.prototype.findIndex.call(strips_chks,x => x.checked == true)) // Get Index and build new strip
+        }
+    })}
+}
+
+function buildStrip(index) {
+    $.get("IAreturn?strip="+index, function(data){
+        liveData = data // Save response
+        const len = liveData.length
+
+        pixelData = pixelData.slice(0,len) // Reset Preview Array
+
+        let div_str = '' // Generate Elements
+        for (let n = 0; n < len; n++) {div_str += '<div></div>'}
+        document.getElementById('live').innerHTML = div_str;
+        document.getElementById('preview').innerHTML = div_str;
+        
+        const preview = document.getElementById('preview').children
+        const live = document.getElementById('live').children
+        
+        // Match Selector length to pixel length
+        document.getElementById('selector').max = len-1
+
+        // Setup Strips
+        for (let i  = 0; i < len; i++) {
+            if (!pixelData[i]) {pixelData[i] = "000000"} // Fill Preview Array if Not already
+
+            live[i].style.width = 90/len + '%'
+            live[i].style.backgroundColor = "#" + liveData[i];
+
+            preview[i].style.width = 90/len + '%'
+            preview[i].style.backgroundColor = "#" + pixelData[i]
+
+            // Set up drag properties
+            preview[i].ondrop = function() {drop(event);};
+            preview[i].ondragover = function() {allowDrop(event);};
+
+            // Add onclick Event
+            preview[i].onclick = function(event) {
+
+                let me = event.currentTarget;
+
+                // Highlight current pixel
+                me.style.backgroundColor= "#ffff00";
+
+                // Calculate Index Value
+                for (var i=0; (me=me.previousSibling); i++);
+
+                // Check for special actions
+                if (event.ctrlKey) { // Ctrl Key
+                    //Add value to beginning of activeIndex
+                    activeIndex.unshift(i);
+
+                } else if (event.shiftKey) { // Shift Key
+
+                    // Caclulate difference between start and stop
+                    const diff = i - activeIndex[0];
+                    // Loop over each pixel - abs eliminates negative runs
+                    for (let x=0; x < Math.abs(diff) ;x++) {
+                        // Determine direction and add value to beginning of active index
+                        if(Math.abs(diff) == diff) { // work left to right
+                            activeIndex.unshift(activeIndex[0]+1);
+                        } else { // work right to left
+                            activeIndex.unshift(activeIndex[0]-1);
+                        }
+                        // Highlight selected
+                        preview[activeIndex[0]].style.backgroundColor = "#ffff00";
+                    }
+
+                } else { // No keys
+
+                    // Loop through active index to find and Un-Highlight last pixels
+                    for (let x=0; x < activeIndex.length ;x++) {
+                        preview[activeIndex[x]].style.backgroundColor = "#" + xMaster(pixelData[activeIndex[x]],true);
+                    }
+                    activeIndex = [i] // Reset activeIndex to Current Index
+                    setSliders(pixelData[i]) // Update RGB Sliders
+                }
+
+
+                // Move Selector to current pixel
+                document.getElementById('selector').value = activeIndex[0];
+            }
+        };
+    })
 }
 
 // Multiply input color by Master. Requires converting to rgb and back.
 function xMaster(hexPre, bright = false) {
-    var hexPost = ""
-    for (var x=0; x<3; x++) {
+    let hexPost = ""
+    for (let x=0; x<3; x++) {
         // Convert to RGB and Multiply by master
-        var rgb = parseInt(document.getElementById("master").value *0.01* parseInt(hexPre.slice(x*2,x*2+2),16));
+        let rgb = parseInt(document.getElementById("master").value *0.01* parseInt(hexPre.slice(x*2,x*2+2),16));
         // Brighten color
         if (document.getElementById('brighten').checked && bright == true) {
             if (rgb != 0) {
@@ -123,12 +138,12 @@ function xMaster(hexPre, bright = false) {
             }
         }
         // convert back to hex
-        var hex = Number(rgb).toString(16);
+        let hex = Number(rgb).toString(16);
         if (hex.length < 2) {
             hex = "0" + hex;
         }
             hexPost += hex;
-        }
+    }
     return hexPost
 };
 
@@ -137,13 +152,14 @@ function updatePreview(colorHex,delay) {
     setSliders(colorHex) // Update RGB Sliders
 
     // Store Color in pixelData
-    for (var i = 0; i < activeIndex.length; i++) {
+    for (let i = 0; i < activeIndex.length; i++) {
         pixelData[activeIndex[i]]=colorHex;
     }
 
-    for (var i=0; i< 60; i++) {
+    const preview = document.getElementById('preview').children
+    for (let i=0; i< pixelData.length; i++) {
         // Set color of each pixel.
-        td[i].style.backgroundColor = '#' + xMaster(pixelData[i],true)
+        preview[i].style.backgroundColor = '#' + xMaster(pixelData[i],true)
     }
 
     // Check for Autotake
@@ -171,68 +187,65 @@ function updatePreview(colorHex,delay) {
 
 // Send request to server to show on strip
 function goLive(dis = false, wipe = false) {
+    // Get checked strip
+    const index = Array.prototype.findIndex.call(strips_chks,x => x.checked == true)
+    if (index != -1) { // One strip is checked 
+        let colorHex = [];
 
-    var colorHex = [];
-
-    // Reorder each pixel into GRB
-    for (var x=0; x < 60 ; x++) {
-        colorHex[x] = xMaster(pixelData[x]);
-    }
-
-    // Set up Ajax Config
-    config = {
-        'type'        : 'POST',
-        'dataType'    : 'JSON',
-        'contentType' : 'application/json',
-        'data'        : JSON.stringify(colorHex)
+        // Multiply by Master
+        for (let x=0; x < pixelData.length ; x++) {
+            colorHex[x] = xMaster(pixelData[x]);
         }
-    // Modify config
-    if (dis == true ) {
-        config.url = 'staticLive?transition=dissolve';
-        config.success = setTimeout(returnColor, 1000);
-    } else if (wipe == true) {
-        config.url = 'staticLive?transition=wipe';
-        config.success = setTimeout(returnColor, 1000);
-    } else {
-        config.url = 'staticLive?transition=take';
-        config.success = setTimeout(returnColor, 200);
+
+        // Set up Ajax Config
+        let config = {
+            'type'        : 'POST',
+            'dataType'    : 'JSON',
+            'contentType' : 'application/json',
+            'data'        : JSON.stringify({'color': colorHex, "strips":index}),
+            'success': (result) => {
+                liveData = result;
+                const live = document.getElementById('live').children
+                // Loop and update background color
+                for (let x=0; x < liveData.length ; x++) {live[x].style.backgroundColor = "#" + liveData[x]}}
+            }
+        // Modify config
+        if (dis == true ) {config.url = 'staticLive?transition=dissolve'} 
+        else if (wipe == true) { config.url = 'staticLive?transition=wipe'} 
+        else { config.url = 'staticLive?transition=take'}
+        // Send Request
+        jQuery.ajax(config);
+        // stop link reloading the page
+        //event.preventDefault();
     }
-    // Send Request
-    jQuery.ajax(config);
-    // stop link reloading the page
-    //event.preventDefault();
 }
 
 // Get live strip colors
 function returnColor() {
+    const live = document.getElementById('live').children
+    const index = Array.prototype.findIndex.call(strips_chks,x => x.checked == true)
     // ajax request
-    $.get("IAreturn", function(data){
-
-        // Define Live Strip pixels
-        var live = document.getElementById("live").children;
-
-        // Loop over each pixel, convert GRB to RGB, update background color
-        for (var x=0; x < 60 ; x++) {
-            liveData[x] = data.slice(0+6*x,2+6*x) + data.slice(2+6*x,4+6*x) + data.slice(4+6*x,6+6*x);
-            live[x].style.backgroundColor = "#" + liveData[x];
-        }
+    $.get("IAreturn?strip="+index, function(data){
+        liveData = data
+        // Loop and update background color
+        for (let x=0; x < data.length ; x++) {live[x].style.backgroundColor = "#" + liveData[x]}
     });
 }
 
 
 // Save position of Pixel Selector
 function selector(event) {
+    const preview = document.getElementById('preview').children
     // Loop through active index to find and Un-Highlight last pixels
-    for (var y=0; y < activeIndex.length;y++) {
-        td[activeIndex[y]].style.backgroundColor = "#" + xMaster(pixelData[activeIndex[0]],true);
+    for (let y=0; y < activeIndex.length;y++) {
+        preview[activeIndex[y]].style.backgroundColor = "#" + xMaster(pixelData[activeIndex[0]],true);
     }
-    // Clear activeIndex
-    activeIndex = []
-    // Fill with Current Index
-    activeIndex[0] = parseInt(event.currentTarget.value);
+    // Reset activeIndex to Current Index
+    activeIndex = [parseInt(event.currentTarget.value)]
 
     // Highlight new pixel
-    td[event.currentTarget.value].style.backgroundColor = "#ffff00";
+    preview[event.currentTarget.value].style.backgroundColor = "#ffff00";
+    preview[activeIndex].scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
     setSliders(pixelData[activeIndex[0]]) // Update RGB Sliders
 }
 
@@ -254,10 +267,11 @@ function autoupdate() {
 
 function LiveToPreview() {
     document.getElementById("master").value = 100;
+    const preview = document.getElementById('preview').children
 
-    for (var i=0; i< 60; i++) {
+    for (let i=0; i< liveData.length; i++) {
         pixelData[i] = liveData[i] // Copy live to Preview
-        td[i].style.backgroundColor = '#' + xMaster(pixelData[i],true) // Set color of each pixel.
+        preview[i].style.backgroundColor = '#' + xMaster(pixelData[i],true) // Set color of each pixel.
     }
 
     // Clear activeIndex
@@ -266,18 +280,7 @@ function LiveToPreview() {
     activeIndex[0] = parseInt(document.getElementById('selector').value);
 
     // Highlight new pixel
-    td[activeIndex[0]].style.backgroundColor = "#ffff00";
-}
-
-// Shutdown Webserver
-function shutdown() {
-    jQuery.ajax({
-        'type'        : 'GET',
-        'contentType' : 'application/json',
-        'url'         : 'shutdown'
-    });
-	// stop link reloading the page
-    event.preventDefault();
+    preview[activeIndex[0]].style.backgroundColor = "#ffff00";
 }
 
 function Brighten() {activeIndex = []; updatePreview("",true);}
@@ -294,20 +297,19 @@ function drag(ev) {
 
 function drop(event) {
 
-    var me = event.currentTarget;
+    let me = event.currentTarget;
 
     // Allow drop to occcur
     event.preventDefault();
 
     // Get Color Code
-    var data = event.dataTransfer.getData("text");
+    const data = event.dataTransfer.getData("text");
 
     // Calculate Index
     for (var i=0; (me=me.previousSibling); i++);
 
-    // Set Active Index
-    activeIndex = [];
-    activeIndex[0] = i-1;
+    // Reset Active Index
+    activeIndex = [i];
 
     // Move Selector to current pixel
     document.getElementById('selector').value = activeIndex[0];
@@ -317,28 +319,39 @@ function drop(event) {
 }
 </script>
 <style>
-
-div {
-    display:inline-block;
+#stripCont {
+    min-width: 100%;
+    overflow-x: auto;
 }
 
-table {
-    width:100%;
+/* width */
+#stripCont::-webkit-scrollbar {
+  height: 10px; opacity:0.5;
 }
 
-td {
-    height:20px;
-    background:var(--primary);
+/* Track */
+#stripCont::-webkit-scrollbar-track {
+  background:var(--accent2);
 }
 
-.PLHeader {
-    height:30px;
-    text-align:center;font-size:large;vertical-align:middle;font-weight:300;
+/* Handle */
+#stripCont::-webkit-scrollbar-thumb {
+  background:var(--accent1);
+  border-radius:5px;
 }
 
+#live, #preview {
+    min-width:100%; width: fit-content;margin:5px 0px;
+    display:flex;justify-content: space-around; gap:2px
+}
+
+#live div, #preview div {
+    min-width:15px; aspect-ratio: 1/1;
+    background-color:#000
+}
 
 #selector {
-    -webkit-appearance: none;
+    appearance: none;
     width: 100%;
     height: 15px;
     margin:20px 0px;
@@ -352,10 +365,6 @@ td {
 
 #selector:hover {
     opacity: 1;
-}
-
-#selector::-webkit-slider-thumb:hover {
-    width:40px;height:40px;
 }
 
 #selector::-webkit-slider-thumb {
@@ -384,17 +393,10 @@ td {
 </style>
 </head>
 <body>
-
-<table>
-    <tr><td colspan="60" class="PLHeader">Live</td></tr>
-    <tr id="live">
-        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-    </tr>
-    <tr><td colspan="60" class="PLHeader">Preview</td></tr>
-    <tr id="preview">
-        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td ondrop="drop(event)" ondragover="allowDrop(event)"></td>
-    </tr>
-</table>
+<div id="stripCont">
+<div id="live"></div>
+<div id="preview"></div>
+</div>
 
 <input type="range" min="0" max="59" value="0" id="selector" oninput="selector(event)">
 <br />
@@ -431,7 +433,7 @@ td {
     <button onclick="updatePreview('ff0000')" style="border-color:rgb(255,0,0);color:rgb(255,0,0)" hexCode = "ff0000" draggable="true" ondragstart="drag(event)">Red</button>
     <button onclick="updatePreview('00ff00')" style="border-color:#00ff00;color:#00ff00" hexCode = "00ff00" draggable="true" ondragstart="drag(event)">Green</button>
     <button onclick="updatePreview('0000ff')" style="border-color:rgb(55,55,255);color:rgb(55,55,255)" hexCode = "0000ff" draggable="true" ondragstart="drag(event)">Blue</button>
-    <button onclick="updatePreview('ffaf00')" style="border-color:#ffaf00;color:#ffaf00;" hexCode = "ffaf00" draggable="true" ondragstart="drag(event)">Orange</button>
+    <button onclick="updatePreview('ff6000')" style="border-color:#ff6000;color:#ff6000;" hexCode = "ff6000" draggable="true" ondragstart="drag(event)">Orange</button>
 </div>
 
 
@@ -450,8 +452,13 @@ td {
         --><span> Brighten Preview:
             <input type="checkbox" id="brighten" onclick="Brighten()" checked=true></span>
     </div>
+    <h2>Publish to:</h2>
+    <div id="publishTo">
+    <label><input type="checkbox">Above</label> <label><input type="checkbox">Below</label> <label><input type="checkbox">Box</label>
+    <!--$%^strip_chks-->
+    </div>
     <button onclick="LiveToPreview()" style="border-color:#a00000;color:#a00000">Live to Preview</button>
-    <a href="Leds.html" ><button style="border-color:#1652a9;color:#1652a9;"> Whole Strip Mode </button></a>
+    <a href="Leds" ><button style="border-color:#1652a9;color:#1652a9;"> Whole Strip Mode </button></a>
     <a href="index.html" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>
 </div>
 

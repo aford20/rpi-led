@@ -25,13 +25,13 @@ body {
 		--accent2: Button Backgrounds, Borders, Days of Week
 		--disabled: Disabled checkboxes */
 
-		/* Default
-		--main:#202020;	--secondary:#ffffff;	--accent1:#e89700;	--accent2:#505050;	--disabled:#c3c3c3;*/
+		/* Default */
+		--main:#202020;	--secondary:#ffffff;	--accent1:#e89700;	--accent2:#505050;	--disabled:#c3c3c3;
 
-		/* Winter Candy */
+		/* Winter Candy 
 		--main:#F0F3F5;	--secondary:#393D3F;	--accent1:#E8436A;	--accent2:#E89292;	--disabled:#c3c3c3;
 
-		/* Spring
+		/* Spring 
 		--main:#d6ffc6;	--secondary:#005800;	--accent1:#11850f;	--accent2:#668934;	--disabled:#c3c3c3; */
 
 		/* Fall Foliage
@@ -70,7 +70,7 @@ button {
 }
 
 .slider {
-    -webkit-appearance: none;
+    appearance: none;
     width: 90%;
     height: 30px;
     margin:20px 20px 0px 20px;
@@ -104,8 +104,8 @@ button {
     cursor: pointer;
 }
 
-#master, #speed {
-    -webkit-appearance: none;
+#master, #speed, .slider2 {
+    appearance: none;
     width: 90%;
     height:20px;
     margin:5% 5% 0% 5%;
@@ -117,8 +117,7 @@ button {
     transition: opacity .2s;
 }
 
-#master::-webkit-slider-thumb, #speed::-webkit-slider-thumb {
-    -webkit-appearance: none;
+#master::-webkit-slider-thumb, #speed::-webkit-slider-thumb, .slider2::-webkit-slider-thumb {
     appearance: none;
     width: 40px;
     height: 40px;
@@ -127,7 +126,7 @@ button {
     cursor: pointer;
 }
 
- #master::-moz-range-thumb, #master::-moz-range-thumb {
+ #master::-moz-range-thumb, #speed::-moz-range-thumb, .slider2::-moz-range-thumb {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -205,6 +204,33 @@ input:checked + .toggle:before {
     font-size:large;font-weight:300;
 }
 
+#publishTo {
+    display: flex; justify-content: space-evenly;
+}
+
+#publishTo label {
+    position: relative;
+    min-width: 20vw;
+    display: inline-block;
+    padding:10px 10px; text-align: center;
+    font-size: 1em;
+}
+
+#publishTo input[type='checkbox'] {
+    position: absolute;
+    top: 0%;
+    left: 0;
+    width: 100%; height:100%;
+    padding: 0px; margin: 0px;
+    border-radius: 3em;z-index:-1;
+    background: none; border:2px solid var(--disabled);
+}
+
+#publishTo input[type='checkbox']:checked  { border-color: var(--accent1);}
+#publishTo input[type='checkbox']:hover { border-color: var(--accent2);}
+#publishTo label:has(> input[type='checkbox']:checked) {color: var(--accent1)}
+#publishTo label:has(> input[type='checkbox']:hover) {color: var(--accent2);}
+
 input[type='checkbox'] {
     -webkit-appearance: none;
     appearance: none;
@@ -256,6 +282,7 @@ input:focus, button:focus {
   margin: 0;
   text-decoration: none;
   color:var(--secondary);
+  font-size:1.2em
 }
 
 #palSwitch li:hover {cursor:pointer;}

@@ -8,10 +8,6 @@
 <script src="scripts/script.js"></script>
 <script type="text/javascript">
 
-// Testing only to load page
-//window.onkeypress = function(){loadElements()};
-
-// Load Page
 window.onload = function(){loadElements();};
 
 function loadElements() {
@@ -20,6 +16,8 @@ function loadElements() {
     preview = document.getElementById('preview');
     live = document.getElementById('live');
     pvColor = "000000";
+    strips_chks = document.getElementById('publishTo').getElementsByTagName("input")
+    strips_chks[0].checked = true
 
     // Add compile function to RGB sliders
     for (var i = 0; i < slider.length; i++) {
@@ -43,35 +41,48 @@ function loadElements() {
         updatePreview(pvColor,true);
     }
 
-		// Color preview tile
-		updatePreview('000000',false)
+		// On input function for Fade out slider
+    document.getElementById("fade_out").oninput = function(event) {
+        // Show Value
+        event.currentTarget.nextSibling.innerHTML = event.currentTarget.value;
+
+    }
+
+    // Add on Change to Publish to options
+    for (let b of strips_chks) {b.addEventListener("change", returnColor)}
+
+    // Color preview tile
+    updatePreview('000000',false)
     // Get live strip color
     returnColor();
-		// Check Autodissolve
-		document.getElementById('autodissolve').checked = true;
+    // Check Autodissolve
+    document.getElementById('autodissolve').checked = true;
 };
 
+function displayLiveColor(color) {
+    // Pad extra zeros
+    color = ("00000" + color).slice(-6);
+    live.style.backgroundColor = "#" + color;
+
+    // Display color code
+    live.innerHTML = color;
+
+    // Flip text color for visibility
+    if (color.slice(0,1) <= 8 && color.slice(2,3) <= 8 && color.slice(4,5) <= 8 ) {
+        live.style.color = "white";
+    }
+    else {
+        live.style.color = "black";
+    }
+
+}
+
 function returnColor() {
-    // ajax request
-    $.get("returnColor", function(liveHex){
-        // Pad extra zeros
-        liveHex = ("00000" + liveHex).slice(-6);
-        live.style.backgroundColor = "#" + liveHex;
-
-        // Display color code
-        live.innerHTML = liveHex;
-
-        // Flip text color for visibility
-        if (liveHex.slice(0,1) <= 8 && liveHex.slice(2,3) <= 8 && liveHex.slice(4,5) <= 8 ) {
-            live.style.color = "white";
-        }
-        else {
-            live.style.color = "black";
-        }
-    });
-	// stop link reloading the page
-    //event.preventDefault();
-
+    // Get first checked strip
+    const index = Array.prototype.findIndex.call(strips_chks,x => x.checked == true)
+    if (index != -1) { // At least one strip is checked
+        $.get("returnColor?strip="+index, (result) => displayLiveColor(result));
+    }
 }
 
 function updatePreview(colorHex,delay) {
@@ -128,28 +139,39 @@ function updatePreview(colorHex,delay) {
 
 // Send request to server to show on strip
 function goLive(dis = false, wipe = false) {
-    // Set up Ajax Config
-    config = {
-        'type'        : 'POST',
-        'dataType'    : 'JSON',
-        'contentType' : 'application/json',
-        'data'        : JSON.stringify([preview.innerHTML])
-        }
-    // Modify config
-    if (dis == true ) {
-        config.url = 'staticLive?transition=dissolve';
-        config.success = setTimeout(returnColor, 1000);
-    } else if (wipe == true) {
-        config.url = 'staticLive?transition=wipe';
-        config.success = setTimeout(returnColor, 1000);
-    } else {
-        config.url = 'staticLive?transition=take';
-        config.success = setTimeout(returnColor, 200);
+    
+    // Read Strips to Publish to
+    var s = ""
+    for (var i = 0; i < strips_chks.length; i++) {
+        if (strips_chks[i].checked) {s +=i + ','} 
     }
-    // Send Request
-    jQuery.ajax(config);
-    // stop link reloading the page
-    //event.preventDefault();
+
+    if (s != "") { // No need to continue if no strip is selected
+        // Set up Ajax Config
+        config = {
+            'type'        : 'POST',
+            'dataType'    : 'JSON',
+            'contentType' : 'application/json',
+            'data'        : JSON.stringify({'color': preview.innerHTML, "strips":s.slice(0,-1)}),
+            'success' : (result) => displayLiveColor(result)             
+        }
+
+        // Modify config
+        if (document.getElementById('fade_out').value != 0) {
+            config.data = JSON.stringify({'color':[document.getElementById("fade_out").value,preview.innerHTML,'000000'],"strips":s.slice(0,-1)})
+            config.url = 'pattern?transition=fadeOut';
+        } else if (dis == true ) {
+            config.url = 'staticLive?transition=dissolve';
+        } else if (wipe == true) {
+            config.url = 'staticLive?transition=wipe';
+        } else {
+            config.url = 'staticLive?transition=take';
+        }
+        // Send Request
+        jQuery.ajax(config);
+        // stop link reloading the page
+        //event.preventDefault();
+    }
 }
 
 function LiveToPreview() {
@@ -194,8 +216,7 @@ function autoupdate() {
 </style>
 </head>
 <body>
-
-<p class="plheader" onkeypress="loadElements()">Preview</p><p class="plheader">Live</p>
+<p class="plheader">Preview</p><p class="plheader">Live</p>
 <p id="preview">000000 </p>
 <p id="live">FFFFFF </p>
 
@@ -229,13 +250,12 @@ function autoupdate() {
     <button onclick="updatePreview('ff0000')" style="border-color:rgb(255,0,0);color:rgb(255,0,0)" >Red</button>
     <button onclick="updatePreview('00ff00')" style="border-color:#00ff00;color:#00ff00" >Green</button>
     <button onclick="updatePreview('0000ff')" style="border-color:rgb(55,55,255);color:rgb(55,55,255)" >Blue</button>
-    <button onclick="updatePreview('ffaf00')" style="border-color:#ffaf00;color:#ffaf00;" >Orange</button>
+    <button onclick="updatePreview('ff6000')" style="border-color:#ff6000;color:#ff6000;" >Orange</button>
 
 </div>
 
 <!-- Settings Drawer -->
 <div id="settings">
-    <input type="range" min="0" max="100" value="100" id="master"><p>100</p>
     <div id="chkOptions">
         <span> Auto-take:
             <input type="checkbox" id="autotake" onclick="autotake()"></span><!--
@@ -246,9 +266,18 @@ function autoupdate() {
         --><span> Refresh Continuously:
             <input type="checkbox" id="autoupdate" onclick="autoupdate()" ></span>
     </div>
+    <h2>Publish to:</h2>
+    <div id="publishTo">
+    <!--<label><input type="checkbox">Above</label> <label><input type="checkbox">Below</label> <label><input type="checkbox">Box</label>
+    -->$%^strip_chks
+    </div>
+    <br>
+    <h2>Master:</h2>
+    <input type="range" min="0" max="100" value="100" id="master"><p>100</p>
+    <h2>Fade Out Timer:</h2>
+	<input type="range" min="0" max="30" value="0" id="fade_out" class="slider2"><p>0</p>
     <button onclick="LiveToPreview()" style="border-color:#a00000;color:#a00000">Live to Preview</button>
-    <a href="IALeds.html" ><button style="border-color:#52a916;color:#52a916"> Individual Mode </button></a>
-    <a href="index.html" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>
+    <a href="/" ><button style="border-color:#c24700;color:#c24700"> Home </button></a>
 </div>
 </body>
 </html>

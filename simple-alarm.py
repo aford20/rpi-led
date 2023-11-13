@@ -3,70 +3,71 @@
 
 # Turn off all lights and end script
 def shutOff():
-    for i in range(60):
-        strip.setPixelColorRGB(i, 0, 0, 0)
-        strip.show()
-        sleep(.02)
+    for r in range(2):
+        for p in range(12):
+            for i in range(strip.numPixels()):
+                c = strip.getPixelColorRGB(i)
+                strip.setPixelColorRGB(i,max(0,c.r-5),max(0,c.g-5),max(0,c.b-5))
+            strip.show()
+            sleep(0.02)
+        sleep(.25)
+        for p in range(12):
+            for i in range(strip.numPixels()):
+                c = strip.getPixelColorRGB(i)
+                strip.setPixelColorRGB(i,max(0,c.r+5),max(0,c.g+5),max(0,c.b+5))
+            strip.show()
+            sleep(0.02)
+        sleep(.25)
+    sleep(1)
+    for p in range(128):
+            for i in range(strip.numPixels()):
+                c = strip.getPixelColorRGB(i)
+                strip.setPixelColorRGB(i,max(0,c.r-2),max(0,c.g-2),max(0,c.b-2))
+            strip.show()
+            sleep(0.02)
     #Shutdown this script
     raise SystemExit
-
-# Turn off side lights
-def waitMode():
-    for i in range(36):
-        strip.setPixelColorRGB(i, 0, 0, 0)
-        strip.show()
-        sleep(.05)
         
 # Generate Loop. j = max brightness. x = pixels per loop
 def pixelLoop(j,x):
-    for i1 in range(j):
+    for i1 in range(1,j):
         for i2 in range(x):
             yield i1, i2    
 
 # Import Libriaries
-from rpi_ws281x import *
 from time import sleep
+import random
+import math
 
+# Setup Button
 import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
-
-import random
-
-from threading import Timer
-timer = Timer(45.0,waitMode)
-
-# Strip and GPIO Setup
 GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(24, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-strip = Adafruit_NeoPixel(60, 18, 800000, 10, False, 255)
+
+# Import Config File
+import os.path
+import configparser
+cfg = configparser.ConfigParser()
+cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
+
+# Setup Light Strip
+from rpi_ws281x import *
+strip = Adafruit_NeoPixel(int(cfg['strip1']['length'].split(",")[0]), int(cfg['strip1']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip1']['channel']))
 strip.begin()
 
 # Increase Brightness. Random LED. 1 Color.
 print("Increasing Brightness ...")
-for a,b in pixelLoop(256,12):
-    strip.setPixelColorRGB(random.randint(0,60),int(a/2),a,a)
+for a,b in pixelLoop(256,7):
+    strip.setPixelColorRGB(random.randint(0,strip.numPixels()),int(a/2),a,a)
     strip.show()
-    sleep(.1)
-    if GPIO.input(23) == 0: #Btn Press
-        waitMode() #Turn off side
-        for i in range(36,60): #Top to full brightness
-            strip.setPixelColorRGB(i,128,255,255)
-            strip.show()
-            sleep(.05)
+    sleep(1 / math.ceil(a/12))
+    if GPIO.input(23) == 0: #Break for Btn Press
         break             
 
-# Only if not already in waitMode
-if strip.getPixelColor(0) != 0:
-    # Make Sure Every LED is at full brightness
-    for i in range(60):
-        strip.setPixelColorRGB(i,128,255,255)
-    strip.show()
-
-    timer.start()
+print("Max Brightness")
 
 while True:
     # Shutdown on btn press
     if GPIO.input(23) == 0:
-        timer.cancel()
         shutOff()
-    sleep(0.1)
+    GPIO.wait_for_edge(23, GPIO.FALLING)

@@ -1,0 +1,39 @@
+{
+  "short_name": "Raspberry Pi",
+  "name": "Raspberry Pi: LED Light Control",
+  "icons": [
+    {
+      "src": "/logos/logo_162.png",
+      "type": "image/png",
+      "sizes": "162x162"
+    },
+    {
+      "src": "/logos/logo_full.png",
+      "type": "image/png",
+      "sizes": "416x416"
+    }
+  ],
+  "id": "/?source=pwa",
+  "start_url": "/?source=pwa",
+  "background_color": "#6bb55b",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#6bb55b",
+  "shortcuts": [
+    {
+      "name": "Alarms",
+      "short_name": "Alarms",
+      "description": "Manage Alarms",
+      "url": "/alarms.html",
+      "icons": [{ "src": "/logos/logo_162.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Whole Strip Mode",
+      "short_name": "Whole Strip Mode",
+      "description": "Manage Strip Lighting",
+      "url": "/Leds",
+      "icons": [{ "src": "/logos/logo_162.png", "sizes": "192x192" }]
+    }
+  ],
+  "description": "Control LED Lights and Alarms from any device"
+}

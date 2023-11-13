@@ -1,1 +1,5 @@
-*.conf
+config.conf
+*.crt
+*.txt
+*.key
+__pycache__/*

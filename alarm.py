@@ -53,7 +53,7 @@ cfg.read(os.path.abspath(os.path.dirname(__file__))+'/config.conf')
 
 # Strip and GPIO Setup
 GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-strip = Adafruit_NeoPixel(int(cfg['strip1']['length']), int(cfg['strip1']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip1']['channel']))
+strip = Adafruit_NeoPixel(int(cfg['strip1']['length'].split(",")[0]), int(cfg['strip1']['gpio_pin']), 800000, 10, False, 255,int(cfg['strip1']['channel']))
 strip.begin()
 
 # Increase Brightness. Random LED. 1 Color.
