@@ -500,6 +500,7 @@ def beginServer():
 	global PixelStrip, CronTab
 	from rpi_ws281x import PixelStrip
 	from crontab import CronTab
+	startup()
 
 def beginDummy():
 	''' Start Server with emulated LEDs and without Cron '''
@@ -521,7 +522,6 @@ def startup():
 
 	cherrypy.engine.start()
 	cherrypy.engine.block()
-
 
 if __name__ == '__main__':
 	beginServer()
